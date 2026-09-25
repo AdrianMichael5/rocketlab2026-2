@@ -223,6 +223,8 @@ class MovieReview(Base):
 
     __tablename__ = "movie_reviews"
     __table_args__ = (CheckConstraint("nota >= 0 AND nota <= 10", name="nota_range"),)
+    # created_at (server_default) volta no próprio INSERT via RETURNING, sem novo SELECT.
+    __mapper_args__ = {"eager_defaults": True}
 
     sk_movie_review_id: Mapped[str] = mapped_column(
         String(64), primary_key=True, default=generate_surrogate_key

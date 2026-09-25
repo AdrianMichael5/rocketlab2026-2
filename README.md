@@ -73,6 +73,33 @@ Decisões da escrita de filmes:
 - DELETE remove avaliações, resumo, métricas e vínculos via `ON DELETE CASCADE`;
   pessoas, gêneros e produtoras permanecem.
 
+## API de avaliações
+
+| Método | Rota | Sucesso | Erros |
+|---|---|---|---|
+| GET | `/api/v1/movies/{sk_movie_id}/reviews` | 200 `{items, total, page, page_size}` | 404, 422 |
+| POST | `/api/v1/movies/{sk_movie_id}/reviews` | 201 com a avaliação | 404, 422 |
+| DELETE | `/api/v1/reviews/{sk_movie_review_id}` | 204 | 404, 422 |
+
+Decisões das avaliações:
+
+- **Escala 0–10, não 1–5.** O enunciado fala em notas de 1 a 5, mas os dados
+  (`movies_reviews.csv`) e a CHECK do banco usam 0–10. A API mantém 0–10 e o
+  frontend exibe 5 estrelas com meia estrela: `nota = estrelas × 2`. Por isso o POST
+  só aceita múltiplos de 0.5 (`7.3` → 422); notas antigas do CSV (ex.: 9.8) continuam
+  válidas na leitura.
+- POST aceita apenas `nome` (1–120), `nota` (número de 0 a 10) e `comentario`
+  (1–4000). Textos são aparados antes de validar; só espaços → 422. `nota` precisa ser
+  número JSON: `true` ou `"7.5"` → 422. Campos extras → 422.
+- Criar ou remover avaliação recalcula `dim_reviews` na mesma transação:
+  `qtd_avaliacoes_usuarios = COUNT` e `nota_media_usuarios = ROUND(AVG, 2)`. Sem
+  avaliações restantes, fica `qtd = 0` e `média = null`. O seed usa o mesmo
+  arredondamento.
+- GET lista da mais recente para a mais antiga; avaliações com o mesmo `created_at`
+  (resolução de segundos) saem pela ordem de inserção, a mais nova primeiro.
+- `created_at` é gerado pelo banco em UTC e retornado com fuso
+  (`2026-09-25T16:53:25Z`).
+
 ## Banco de dados e migrações
 
 O modelo usa um esquema estrela para o catálogo de filmes:

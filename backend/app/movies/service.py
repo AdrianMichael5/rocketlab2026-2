@@ -35,6 +35,9 @@ SCALAR_FIELDS = (
 UPDATABLE_FIELDS = (frozenset(SCALAR_FIELDS) - {"ano_lancamento", "data_lancamento"}) | {"id_filme"}
 
 
+MOVIE_NOT_FOUND = "Filme não encontrado"
+
+
 class MovieNotFoundError(Exception):
     """Filme inexistente para o identificador informado."""
 

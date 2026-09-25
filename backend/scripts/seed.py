@@ -40,6 +40,7 @@ from app.movies.models import (
     bridge_movie_genre,
     bridge_movie_person,
 )
+from app.reviews.schemas import CASAS_MEDIA
 
 logger = logging.getLogger("scripts.seed")
 
@@ -257,7 +258,8 @@ async def rebuild_review_summary(conn: AsyncConnection) -> int:
         MOVIE_REVIEWS.c.sk_movie_id.label("sk_review_id"),
         MOVIE_REVIEWS.c.sk_movie_id,
         func.count(),
-        func.avg(MOVIE_REVIEWS.c.nota),
+        # Mesmo arredondamento usado pela API ao recalcular após criar/remover avaliação.
+        func.round(func.avg(MOVIE_REVIEWS.c.nota), CASAS_MEDIA),
     ).group_by(MOVIE_REVIEWS.c.sk_movie_id)
     await conn.execute(delete(DIM_REVIEWS))
     await conn.execute(

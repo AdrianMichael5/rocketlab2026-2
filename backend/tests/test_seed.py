@@ -197,6 +197,30 @@ async def test_seed_loads_all_tables_and_rebuilds_dim_reviews(
     assert fact["receita_brl"] == Decimal("261480485.10")
 
 
+async def test_seed_rounds_dim_reviews_average_to_two_decimals(
+    engine: AsyncEngine, tmp_path: Path
+) -> None:
+    # (9.8 + 2.4 + 4.4) / 3 = 5.5333…; mesmo arredondamento da API de avaliações.
+    write_csv_fixtures(
+        tmp_path,
+        {
+            "movies_reviews.csv": [
+                ["sk_movie_review_id", "sk_movie_id", "nome", "nota", "comentario"],
+                ["r1", "m1", "Henrique", "9.8", "Ótimo."],
+                ["r2", "m1", "Lucas", "2.4", "Ruim."],
+                ["r3", "m1", "Maria", "4.4", "Fraco."],
+            ]
+        },
+    )
+
+    await seed(engine, tmp_path)
+
+    async with engine.connect() as conn:
+        summary = (await conn.execute(select(DimReview.__table__))).mappings().one()
+    assert summary["qtd_avaliacoes_usuarios"] == 3
+    assert summary["nota_media_usuarios"] == 5.53
+
+
 async def test_seed_logs_progress_per_table(
     engine: AsyncEngine, data_dir: Path, caplog: pytest.LogCaptureFixture, monkeypatch
 ) -> None:

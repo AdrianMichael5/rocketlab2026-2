@@ -18,3 +18,16 @@ htmlcov/
 # Sistema operacional e IDE
 .DS_Store
 .vscode/
+
+# Dados
+backend/data/bridge_movie_company.csv
+backend/data/bridge_movie_genre.csv
+backend/data/bridge_movie_person.csv
+backend/data/dim_companies.csv
+backend/data/dim_genres.csv
+backend/data/dim_movies.csv
+backend/data/dim_people.csv
+backend/data/dim_reviews.csv
+backend/data/fact_movies_performance.csv
+backend/data/movies_reviews.csv
+backend/data/*.csv

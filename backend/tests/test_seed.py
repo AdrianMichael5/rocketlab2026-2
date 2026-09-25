@@ -6,11 +6,9 @@ from pathlib import Path
 
 import pytest
 from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
-from sqlalchemy.pool import StaticPool
+from sqlalchemy.ext.asyncio import AsyncEngine
 
 from app.db.base import Base
-from app.db.session import enable_sqlite_foreign_keys
 from app.movies.models import DimMovie, DimReview, FactMoviePerformance
 from scripts.seed import (
     SeedError,
@@ -21,6 +19,7 @@ from scripts.seed import (
     to_decimal,
     to_int,
 )
+from tests.db import build_memory_engine
 
 CSV_FIXTURES: dict[str, list[list[str]]] = {
     "dim_genres.csv": [["nome_genero", "sk_genre_id"], ["Horror", "g1"], ["Drama", "g2"]],
@@ -96,12 +95,6 @@ def write_csv_fixtures(data_dir: Path, overrides: dict[str, list[list[str]]] | N
     for filename, rows in {**CSV_FIXTURES, **(overrides or {})}.items():
         with (data_dir / filename).open("w", newline="", encoding="utf-8") as file:
             csv.writer(file).writerows(rows)
-
-
-def build_memory_engine() -> AsyncEngine:
-    engine = create_async_engine("sqlite+aiosqlite://", poolclass=StaticPool)
-    enable_sqlite_foreign_keys(engine)
-    return engine
 
 
 @pytest.fixture

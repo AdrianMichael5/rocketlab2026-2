@@ -16,6 +16,7 @@ from sqlalchemy import (
     Date,
     Double,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     String,
@@ -125,6 +126,14 @@ class DimMovie(Base):
     reviews: Mapped[list["MovieReview"]] = relationship(
         back_populates="movie", cascade="all, delete-orphan", order_by="MovieReview.created_at"
     )
+
+
+# Ordenação padrão da listagem (titulo sem diferenciar caixa + desempate estável).
+Index(
+    "ix_dim_movies_titulo_nocase",
+    DimMovie.titulo.collate("NOCASE"),
+    DimMovie.sk_movie_id,
+)
 
 
 class DimGenre(Base):

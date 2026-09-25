@@ -32,6 +32,11 @@ packages = ["app"]
 asyncio_mode = "auto"
 testpaths = ["tests"]
 
+[tool.coverage.run]
+# SQLAlchemy async executa o código após await dentro de greenlets.
+concurrency = ["greenlet", "thread"]
+source = ["app"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py311"

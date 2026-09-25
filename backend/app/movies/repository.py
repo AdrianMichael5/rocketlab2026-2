@@ -2,12 +2,21 @@
 
 from typing import Any
 
-from sqlalchemy import ColumnElement, Select, exists, func, select
+from sqlalchemy import ColumnElement, Select, delete, exists, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import contains_eager, selectinload
 
-from app.movies.models import DimGenre, DimMovie, DimReview, bridge_movie_genre
+from app.movies.models import (
+    DimGenre,
+    DimMovie,
+    DimPerson,
+    DimReview,
+    PersonType,
+    bridge_movie_genre,
+)
 from app.movies.schemas import MovieFilters, MovieOrder
+
+DIRETOR: PersonType = "Diretor"
 
 
 def _apply_filters(stmt: Select, filters: MovieFilters) -> Select:
@@ -65,8 +74,14 @@ async def list_movies(
     return list(movies), total
 
 
-async def get_movie(session: AsyncSession, sk_movie_id: str) -> DimMovie | None:
-    """Busca um filme com todas as relações exibidas no detalhe."""
+async def get_movie(
+    session: AsyncSession, sk_movie_id: str, *, refresh: bool = False
+) -> DimMovie | None:
+    """Busca um filme com todas as relações exibidas no detalhe.
+
+    ``refresh`` recarrega um objeto já presente na sessão (ex.: logo após uma escrita),
+    para que as coleções voltem na ordenação definida nos relacionamentos.
+    """
 
     stmt = (
         select(DimMovie)
@@ -78,5 +93,61 @@ async def get_movie(session: AsyncSession, sk_movie_id: str) -> DimMovie | None:
             selectinload(DimMovie.performance),
             selectinload(DimMovie.reviews_summary),
         )
+        .execution_options(populate_existing=refresh)
     )
     return (await session.scalars(stmt)).one_or_none()
+
+
+async def id_filme_exists(
+    session: AsyncSession, id_filme: str, exclude_sk_movie_id: str | None = None
+) -> bool:
+    stmt = select(DimMovie.sk_movie_id).where(DimMovie.id_filme == id_filme)
+    if exclude_sk_movie_id is not None:
+        stmt = stmt.where(DimMovie.sk_movie_id != exclude_sk_movie_id)
+    return (await session.scalar(stmt.limit(1))) is not None
+
+
+async def resolve_genres(session: AsyncSession, nomes: list[str]) -> list[DimGenre]:
+    """Reaproveita gêneros existentes (sem diferenciar caixa) e cria os que faltam.
+
+    O catálogo de gêneros é pequeno; a comparação é feita em Python porque o lower()
+    do SQLite só trata ASCII ("FICÇÃO" ≠ "ficção").
+    """
+
+    if not nomes:
+        return []
+    existentes = {g.nome_genero.casefold(): g for g in await session.scalars(select(DimGenre))}
+    resolvidos: list[DimGenre] = []
+    for nome in nomes:
+        genero = existentes.get(nome.casefold())
+        if genero is None:
+            genero = DimGenre(nome_genero=nome)
+            session.add(genero)
+        resolvidos.append(genero)
+    return resolvidos
+
+
+async def resolve_directors(session: AsyncSession, nomes: list[str]) -> list[DimPerson]:
+    """Reaproveita diretores pelo nome exato (unique nome+tipo) e cria os que faltam."""
+
+    if not nomes:
+        return []
+    stmt = select(DimPerson).where(
+        DimPerson.tipo_pessoa == DIRETOR, DimPerson.nome_pessoa.in_(nomes)
+    )
+    existentes = {p.nome_pessoa: p for p in await session.scalars(stmt)}
+    resolvidos: list[DimPerson] = []
+    for nome in nomes:
+        pessoa = existentes.get(nome)
+        if pessoa is None:
+            pessoa = DimPerson(nome_pessoa=nome, tipo_pessoa=DIRETOR)
+            session.add(pessoa)
+        resolvidos.append(pessoa)
+    return resolvidos
+
+
+async def delete_movie(session: AsyncSession, sk_movie_id: str) -> bool:
+    """Remove o filme; avaliações, resumo, fact e bridges saem pelo ON DELETE CASCADE."""
+
+    result = await session.execute(delete(DimMovie).where(DimMovie.sk_movie_id == sk_movie_id))
+    return result.rowcount > 0

@@ -42,6 +42,37 @@ A API mínima ficará disponível em `http://localhost:8000`; use
 `http://localhost:8000/docs` para a documentação automática. O endpoint
 `GET /health` permite conferir se a aplicação iniciou corretamente.
 
+## API de filmes (`/api/v1/movies`)
+
+| Método | Rota | Sucesso | Erros |
+|---|---|---|---|
+| GET | `/api/v1/movies` | 200 `{items, total, page, page_size}` | 422 |
+| GET | `/api/v1/movies/{sk_movie_id}` | 200 | 404 |
+| POST | `/api/v1/movies` | 201 com o detalhe | 409, 422 |
+| PATCH | `/api/v1/movies/{sk_movie_id}` | 200 com o detalhe | 404, 409, 422 |
+| DELETE | `/api/v1/movies/{sk_movie_id}` | 204 | 404 |
+
+Decisões da escrita de filmes:
+
+- Campos aceitos: `titulo` (obrigatório na criação), `id_filme`, `ano_lancamento`
+  (1888–2100), `data_lancamento`, `sinopse`, `duracao_minutos` (0 = desconhecida),
+  `status_filme`, `url_poster`, `diretores` e `generos`. Campos fora dessa lista → 422.
+- `url_poster` precisa ser uma URL `http(s)` absoluta (como as do TMDB); outros esquemas
+  (`javascript:`, `data:`, caminhos relativos) → 422.
+- `sinopse`, `status_filme` e `url_poster` vazios ou só com espaços são gravados como NULL,
+  seguindo a regra da carga dos CSVs.
+- Erros 422 de consistência (ano × data já salva) usam o mesmo formato de `detail` do
+  FastAPI: `[{"loc": ["body", campo], "msg": ..., "type": "value_error"}]`.
+- `id_filme` omitido é gerado como `local-<uuid hex>`; um `id_filme` já usado → **409**.
+- `data_lancamento` sem `ano_lancamento` preenche o ano; os dois divergentes → 422.
+- Gêneros são reaproveitados pelo nome sem diferenciar caixa ("drama" → "Drama");
+  diretores pelo nome exato (a unicidade de `dim_people` é por nome + tipo).
+- No PATCH só os campos enviados mudam; `diretores`/`generos` substituem a lista
+  inteira (`[]` limpa) e não aceitam `null`, assim como `titulo` e `id_filme`.
+  Trocar diretores preserva atores e roteiristas.
+- DELETE remove avaliações, resumo, métricas e vínculos via `ON DELETE CASCADE`;
+  pessoas, gêneros e produtoras permanecem.
+
 ## Banco de dados e migrações
 
 O modelo usa um esquema estrela para o catálogo de filmes:

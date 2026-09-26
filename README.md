@@ -2,8 +2,7 @@
 
 Base inicial para evoluir a atividade do RocketLab 2026.2. Ela preserva a organização do backend,
 o modelo relacional do catálogo de filmes em SQLAlchemy 2.0 e o histórico de
-migrações com Alembic, sem incluir interface, dados CSV, endpoints de negócio
-ou rotinas de carga.
+migrações com Alembic, a API de filmes e avaliações e o frontend em React.
 
 > **Nota:** `RocketLab` é apenas o nome de referência desta base. O diretório,
 > nome do pacote, título da API e arquivo do banco podem ser renomeados para o
@@ -22,6 +21,12 @@ ou rotinas de carga.
 │   │   └── movies/        # modelos SQLAlchemy do domínio de filmes
 │   ├── migrations/        # ambiente e revisões Alembic
 │   └── tests/
+├── frontend/
+│   └── src/
+│       ├── api/           # cliente HTTP tipado, tipos espelhando o backend, React Query
+│       ├── components/    # Layout (cabeçalho/navegação) e StarRating
+│       ├── pages/         # páginas das rotas
+│       └── styles/        # tema escuro (variáveis CSS globais)
 └── README.md
 ```
 
@@ -41,6 +46,41 @@ cp .env.example .env
 A API mínima ficará disponível em `http://localhost:8000`; use
 `http://localhost:8000/docs` para a documentação automática. O endpoint
 `GET /health` permite conferir se a aplicação iniciou corretamente.
+
+## Frontend
+
+Vite + React + TypeScript, com React Router e TanStack Query. Requer Node 22.12 ou
+superior (exigência do Vitest 5; o Vite 8 aceita a partir do 20.19).
+
+```bash
+cd frontend
+npm install
+cp .env.example .env   # opcional: sem ele, a API padrão é http://localhost:8000/api/v1
+npm run dev            # http://localhost:5173 (origem já liberada no CORS do backend)
+```
+
+| Script | O que faz |
+|---|---|
+| `npm run dev` | servidor de desenvolvimento |
+| `npm run build` | checagem de tipos (`tsc -b`) + build de produção em `dist/` |
+| `npm run lint` | ESLint |
+| `npm test` | testes (Vitest + Testing Library) |
+| `npm run test:coverage` | testes com cobertura |
+
+Decisões do frontend:
+
+- `VITE_API_URL` define a URL base da API, **incluindo** `/api/v1`.
+- Os tipos em `src/api/types.ts` são mantidos à mão e usam os mesmos nomes de campo dos
+  schemas do backend (`app/movies/schemas.py`, `app/reviews/schemas.py`); atualize-os
+  junto com qualquer mudança de contrato.
+- Erros da API viram `ApiError` com `status` e `fieldErrors` (`{campo, mensagem}`, a
+  partir dos 422 do FastAPI); falha de rede usa `status` 0. Consultas não são repetidas
+  em erros 4xx.
+- Estilo com CSS Modules e variáveis CSS em `src/styles/theme.css` (tema escuro
+  inspirado na paleta do Letterboxd), sem framework de UI.
+- `StarRating` exibe a nota 0–10 como 5 estrelas com meia (`estrelas = nota / 2`,
+  arredondado à meia estrela mais próxima). No modo de entrada, oferece de ½ a 5
+  estrelas e devolve a nota 1–10; nota 0 não é selecionável pelas estrelas.
 
 ## API de filmes (`/api/v1/movies`)
 

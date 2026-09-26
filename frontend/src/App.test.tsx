@@ -1,7 +1,7 @@
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { stubApi } from './test/apiMock'
+import { jsonResponse, movieDetail, stubApi } from './test/apiMock'
 import { renderRoute } from './test/renderWithProviders'
 
 const renderAt = renderRoute
@@ -76,14 +76,22 @@ describe('layout e rotas', () => {
     expect(screen.getByRole('banner')).toBeInTheDocument()
   })
 
-  it('tem rota para o detalhe do filme (destino dos cards do catálogo)', () => {
+  it('tem rota para o detalhe do filme (destino dos cards do catálogo)', async () => {
+    stubApi({ movie: () => jsonResponse(movieDetail({ titulo: 'Alien' })) })
     renderAt('/filmes/m1')
 
-    expect(
-      screen.getByRole('heading', { level: 1, name: 'Detalhes do filme' }),
-    ).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: 'Alien' })).toBeInTheDocument()
     expect(screen.queryByText('Página não encontrada')).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Voltar para os filmes' })).toHaveAttribute('href', '/')
+  })
+
+  it('tem rota para editar o filme', () => {
+    renderAt('/filmes/m1/editar')
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Editar filme' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Voltar para o filme' })).toHaveAttribute(
+      'href',
+      '/filmes/m1',
+    )
   })
 
   it('"filmes/novo" continua indo para o cadastro, não para o detalhe', () => {

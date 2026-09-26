@@ -31,5 +31,7 @@ export function renderRoute(path = '/') {
     ...view,
     /** Query string atual, sem o "?" (ex.: "q=alien&page=2"). */
     search: () => current.location?.search.replace(/^\?/, '') ?? '',
+    /** Caminho atual (ex.: "/filmes/m1"). */
+    pathname: () => current.location?.pathname ?? '',
   }
 }

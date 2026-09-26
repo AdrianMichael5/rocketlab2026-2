@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
-import { jsonResponse, movie, moviePage, stubApi } from '../test/apiMock'
+import { jsonResponse, movie, movieDetail, moviePage, stubApi } from '../test/apiMock'
 import { renderRoute } from '../test/renderWithProviders'
 
 const ALIEN = movie({ sk_movie_id: 'm1', titulo: 'Alien' })
@@ -218,15 +218,17 @@ describe('MoviesPage — busca, filtros e ordenação', () => {
 
 describe('MoviesPage — navegação para o filme', () => {
   it('clicar no card abre o detalhe do filme, não a página "não encontrada"', async () => {
-    stubApi({ movies: () => jsonResponse(moviePage([ALIEN])) })
-    renderRoute('/')
+    stubApi({
+      movies: () => jsonResponse(moviePage([ALIEN])),
+      movie: () => jsonResponse(movieDetail({ sk_movie_id: 'm1', titulo: 'Alien' })),
+    })
+    const view = renderRoute('/')
     const grid = await findGrid()
 
     await userEvent.click(within(grid).getByRole('link', { name: 'Alien' }))
 
-    expect(
-      screen.getByRole('heading', { level: 1, name: 'Detalhes do filme' }),
-    ).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: 'Alien' })).toBeInTheDocument()
+    expect(view.pathname()).toBe('/filmes/m1')
     expect(screen.queryByText('Página não encontrada')).not.toBeInTheDocument()
   })
 })

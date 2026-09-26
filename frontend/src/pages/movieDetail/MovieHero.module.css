@@ -1,0 +1,86 @@
+.hero {
+  margin-bottom: var(--space-8);
+}
+
+/* Gradiente aparece quando não há imagem de fundo. */
+.backdrop {
+  position: relative;
+  height: clamp(160px, 34vw, 380px);
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, var(--color-surface-raised), var(--color-bg));
+  overflow: hidden;
+}
+
+.backdrop::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, transparent 35%, var(--color-bg));
+}
+
+.backdropImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.6;
+}
+
+.content {
+  position: relative;
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  align-items: end;
+  gap: var(--space-4);
+  margin-top: -56px;
+  padding-inline: var(--space-2);
+}
+
+.poster {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.5);
+}
+
+.info {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.title {
+  font-size: var(--font-size-xl);
+  overflow-wrap: anywhere;
+}
+
+.year,
+.noRating {
+  color: var(--color-text-muted);
+}
+
+.rating {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  color: var(--color-text-strong);
+  font-weight: 600;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+@media (min-width: 640px) {
+  .content {
+    grid-template-columns: 200px minmax(0, 1fr);
+    gap: var(--space-6);
+    margin-top: -120px;
+    padding-inline: var(--space-6);
+  }
+}

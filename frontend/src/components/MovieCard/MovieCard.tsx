@@ -2,18 +2,13 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { MovieListItem } from '../../api/types'
 import { StarRating } from '../StarRating/StarRating'
+import { reviewCountLabel } from '../StarRating/rating'
 import styles from './MovieCard.module.css'
 import { POSTER_PLACEHOLDER } from './poster'
 
 // Tamanho do pôster w500 do TMDB (2:3); reserva o espaço antes da imagem carregar.
 const POSTER_WIDTH = 500
 const POSTER_HEIGHT = 750
-
-const numberFormat = new Intl.NumberFormat('pt-BR')
-
-function reviewCountLabel(qtd: number): string {
-  return `${numberFormat.format(qtd)} ${qtd === 1 ? 'avaliação' : 'avaliações'}`
-}
 
 interface MovieCardProps {
   movie: MovieListItem

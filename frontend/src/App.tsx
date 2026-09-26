@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { createQueryClient } from './api/queryClient'
 import { Layout } from './components/Layout/Layout'
+import { EditMoviePage } from './pages/EditMoviePage'
 import { MovieDetailPage } from './pages/MovieDetailPage'
 import { MoviesPage } from './pages/MoviesPage'
 import { NewMoviePage } from './pages/NewMoviePage'
@@ -17,6 +18,7 @@ export function AppRoutes() {
         <Route path="filmes/novo" element={<NewMoviePage />} />
         {/* A rota estática "novo" tem prioridade sobre o parâmetro no React Router. */}
         <Route path="filmes/:skMovieId" element={<MovieDetailPage />} />
+        <Route path="filmes/:skMovieId/editar" element={<EditMoviePage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>

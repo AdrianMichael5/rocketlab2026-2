@@ -38,3 +38,10 @@ export function formatStars(estrelas: number): string {
 export function starsLabel(estrelas: number): string {
   return `${formatStars(estrelas)} ${estrelas < 2 ? 'estrela' : 'estrelas'}`
 }
+
+const countFormat = new Intl.NumberFormat('pt-BR')
+
+/** "1 avaliação", "5 avaliações", "1.500 avaliações". */
+export function reviewCountLabel(qtd: number): string {
+  return `${countFormat.format(qtd)} ${qtd === 1 ? 'avaliação' : 'avaliações'}`
+}

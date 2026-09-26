@@ -1,0 +1,64 @@
+.page {
+  display: grid;
+  gap: var(--space-8);
+}
+
+.edit,
+.remove {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.edit {
+  border: 0;
+  background: var(--color-surface-raised);
+  color: var(--color-text-strong);
+}
+
+.edit:hover {
+  color: var(--color-text-strong);
+  filter: brightness(1.2);
+}
+
+.remove {
+  border: 1px solid var(--color-danger);
+  background: transparent;
+  color: var(--color-danger);
+}
+
+.remove:hover {
+  background: var(--color-danger);
+  color: var(--color-bg);
+}
+
+/* ------------------------------------------------------------ carregando */
+
+.loading {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.loadingBackdrop,
+.loadingLine {
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+}
+
+.loadingBackdrop {
+  height: clamp(160px, 34vw, 380px);
+}
+
+.loadingLine {
+  height: 20px;
+  width: 60%;
+}
+
+.loadingLine:last-child {
+  width: 35%;
+}

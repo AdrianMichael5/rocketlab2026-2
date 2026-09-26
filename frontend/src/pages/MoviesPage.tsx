@@ -2,6 +2,7 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { listGenres } from '../api/genres'
 import { listMovies } from '../api/movies'
+import { movieKeys } from '../api/queryKeys'
 import type { MovieListItem, Page } from '../api/types'
 import { CatalogToolbar } from '../components/CatalogToolbar/CatalogToolbar'
 import { MovieCard } from '../components/MovieCard/MovieCard'
@@ -34,7 +35,7 @@ export function MoviesPage() {
   const { params, update, clear } = useCatalogParams()
   const filters = toMovieFilters(params)
   const movies = useQuery({
-    queryKey: ['movies', filters],
+    queryKey: movieKeys.list(filters),
     queryFn: ({ signal }) => listMovies(filters, signal),
     // Mantém a página anterior na tela enquanto a próxima carrega (sem piscar o esqueleto).
     placeholderData: keepPreviousData,

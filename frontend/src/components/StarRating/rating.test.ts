@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatStars, notaToStars, starFill, starsToNota } from './rating'
+import { formatStars, notaToStars, reviewCountLabel, starFill, starsToNota } from './rating'
 
 describe('notaToStars', () => {
   it.each([
@@ -59,5 +59,16 @@ describe('formatStars', () => {
   it('usa vírgula decimal e omite ",0"', () => {
     expect(formatStars(4.5)).toBe('4,5')
     expect(formatStars(3)).toBe('3')
+  })
+})
+
+describe('reviewCountLabel', () => {
+  it('usa o singular para uma avaliação', () => {
+    expect(reviewCountLabel(1)).toBe('1 avaliação')
+  })
+
+  it('usa o plural e separador de milhar', () => {
+    expect(reviewCountLabel(0)).toBe('0 avaliações')
+    expect(reviewCountLabel(1500)).toBe('1.500 avaliações')
   })
 })

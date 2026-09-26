@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { listGenres } from './genres'
 import { createMovie, deleteMovie, getMovie, listMovies, updateMovie } from './movies'
 import { createReview, deleteReview, listReviews } from './reviews'
 import type { MovieUpdate } from './types'
@@ -112,5 +113,14 @@ describe('reviews', () => {
     await deleteReview('r1')
 
     expect(lastCall()).toMatchObject({ url: `${BASE}/reviews/r1`, method: 'DELETE' })
+  })
+})
+
+describe('genres', () => {
+  it('listGenres busca a lista de gêneros', async () => {
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(['Drama']), { status: 200 }))
+
+    await expect(listGenres()).resolves.toEqual(['Drama'])
+    expect(lastCall()).toMatchObject({ url: `${BASE}/genres`, method: 'GET' })
   })
 })

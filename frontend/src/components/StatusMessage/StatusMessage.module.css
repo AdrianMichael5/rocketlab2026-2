@@ -1,0 +1,55 @@
+.message {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  padding: var(--space-8) var(--space-4);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  text-align: center;
+}
+
+.error {
+  border-style: solid;
+  border-color: var(--color-danger);
+}
+
+.title {
+  font-size: var(--font-size-lg);
+}
+
+.error .title {
+  color: var(--color-danger);
+}
+
+.description {
+  max-width: 48ch;
+  color: var(--color-text-muted);
+}
+
+.action {
+  margin-top: var(--space-2);
+}
+
+/* Botões e links de ação têm o mesmo visual. */
+.action > :is(button, a) {
+  display: inline-block;
+  min-height: 40px;
+  padding: var(--space-2) var(--space-4);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--color-accent);
+  color: var(--color-bg);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.action > :is(button, a):hover {
+  color: var(--color-bg);
+  filter: brightness(1.1);
+}
+
+.action > button:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}

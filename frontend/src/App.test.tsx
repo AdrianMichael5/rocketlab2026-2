@@ -1,16 +1,14 @@
-import { render, screen, within } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
-import { describe, expect, it } from 'vitest'
-import { AppRoutes } from './App'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { stubApi } from './test/apiMock'
+import { renderRoute } from './test/renderWithProviders'
 
-function renderAt(path: string) {
-  return render(
-    <MemoryRouter initialEntries={[path]}>
-      <AppRoutes />
-    </MemoryRouter>,
-  )
-}
+const renderAt = renderRoute
+
+beforeEach(() => {
+  stubApi()
+})
 
 describe('layout e rotas', () => {
   it('mostra o cabeçalho com a marca e a navegação principal', () => {
@@ -76,5 +74,21 @@ describe('layout e rotas', () => {
     ).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Voltar para os filmes' })).toHaveAttribute('href', '/')
     expect(screen.getByRole('banner')).toBeInTheDocument()
+  })
+
+  it('tem rota para o detalhe do filme (destino dos cards do catálogo)', () => {
+    renderAt('/filmes/m1')
+
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Detalhes do filme' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('Página não encontrada')).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Voltar para os filmes' })).toHaveAttribute('href', '/')
+  })
+
+  it('"filmes/novo" continua indo para o cadastro, não para o detalhe', () => {
+    renderAt('/filmes/novo')
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Adicionar filme' })).toBeInTheDocument()
   })
 })

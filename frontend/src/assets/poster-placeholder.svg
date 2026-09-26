@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300" width="200" height="300">
+  <rect width="200" height="300" fill="#2c3440"/>
+  <g fill="none" stroke="#5c6d7e" stroke-width="6" stroke-linejoin="round">
+    <rect x="62" y="112" width="76" height="60" rx="6"/>
+    <path d="M62 132h76M62 152h76M82 112v60M118 112v60"/>
+  </g>
+  <text x="100" y="206" fill="#89a" font-family="system-ui, sans-serif" font-size="15" text-anchor="middle">Sem pôster</text>
+</svg>

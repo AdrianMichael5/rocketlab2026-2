@@ -2,16 +2,9 @@ import type { Locator, Page } from '@playwright/test'
 
 export interface ReviewFormInput {
   nome: string
-  /** Estrelas de 0,5 a 5 (a API guarda nota = estrelas × 2). */
-  estrelas: number
+  /** Nota inteira de 0 a 10. */
+  nota: number
   comentario: string
-}
-
-const starsFormat = new Intl.NumberFormat('pt-BR')
-
-/** Mesmo texto de `starsLabel` do componente StarRating ("3,5 estrelas", "1 estrela"). */
-function starsLabel(estrelas: number): string {
-  return `${starsFormat.format(estrelas)} ${estrelas < 2 ? 'estrela' : 'estrelas'}`
 }
 
 /** Detalhe do filme (/filmes/:id): ficha, ações, remoção e avaliações. */
@@ -51,6 +44,11 @@ export class MovieDetailPage {
   }
 
   /** Texto exato dentro do conteúdo principal (ano, resumo da nota, sinopse). */
+  /** Selo da média no topo do detalhe (ex.: "Nota média 7,5 de 10"). */
+  averageRating(label: string): Locator {
+    return this.page.getByRole('main').getByRole('img', { name: label, exact: true })
+  }
+
   text(texto: string): Locator {
     return this.page.getByRole('main').getByText(texto, { exact: true })
   }
@@ -61,12 +59,12 @@ export class MovieDetailPage {
       .filter({ has: this.page.getByRole('heading', { name: nome, exact: true }) })
   }
 
-  async submitReview({ nome, estrelas, comentario }: ReviewFormInput): Promise<void> {
+  async submitReview({ nome, nota, comentario }: ReviewFormInput): Promise<void> {
     const form = this.reviewForm
     await form.getByLabel('Seu nome').fill(nome)
     await form
-      .getByRole('radiogroup', { name: 'Sua nota' })
-      .getByRole('radio', { name: starsLabel(estrelas), exact: true })
+      .getByRole('radiogroup', { name: 'Sua nota (0 a 10)' })
+      .getByRole('radio', { name: `Nota ${nota}`, exact: true })
       .check()
     await form.getByLabel('Comentário').fill(comentario)
     await form.getByRole('button', { name: 'Enviar avaliação' }).click()

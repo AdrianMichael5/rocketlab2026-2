@@ -20,10 +20,7 @@
   --color-danger: #ff6b6b;
   --color-focus: var(--color-accent-blue);
 
-  --color-star: var(--color-accent);
-  --color-star-input: var(--color-accent);
-  /* Contraste ≥ 3:1 com o fundo, para a estrela vazia continuar visível. */
-  --color-star-empty: #5c6d7e;
+  --color-rating: var(--color-accent);
 
   --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-size-sm: 0.8125rem;

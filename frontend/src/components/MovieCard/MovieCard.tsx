@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { MovieListItem } from '../../api/types'
-import { StarRating } from '../StarRating/StarRating'
-import { reviewCountLabel } from '../StarRating/rating'
+import { Rating } from '../Rating/Rating'
+import { reviewCountLabel } from '../Rating/nota'
 import styles from './MovieCard.module.css'
 import { POSTER_PLACEHOLDER } from './poster'
 
@@ -44,7 +44,7 @@ export function MovieCard({ movie }: MovieCardProps) {
           <p className={styles.noRating}>Sem avaliações</p>
         ) : (
           <p className={styles.rating}>
-            <StarRating value={movie.nota_media} size="sm" />
+            <Rating value={movie.nota_media} media size="sm" />
             <span className={styles.count}>{reviewCountLabel(movie.qtd_avaliacoes)}</span>
           </p>
         )}

@@ -111,12 +111,12 @@ test.describe('Layout em telas estreitas (320px)', () => {
     expect(box?.width ?? 0).toBeGreaterThan((viewport?.width ?? 0) * 0.75)
   })
 
-  test('cada meia estrela da nota é um alvo de pelo menos 24px', async ({ api, tag, detail }) => {
+  test('cada opção de nota é um alvo de pelo menos 24px', async ({ api, tag, detail }) => {
     const movie = await api.createMovie({ titulo: `${tag} Alvos` })
     await detail.goto(movie.sk_movie_id)
 
     const radios = detail.reviewForm.getByRole('radio')
-    await expect(radios).toHaveCount(10)
+    await expect(radios).toHaveCount(11)
     for (const radio of await radios.all()) {
       const box = await radio.boundingBox()
       expect(box?.width ?? 0).toBeGreaterThanOrEqual(MIN_TARGET_PX)
@@ -150,14 +150,14 @@ test.describe('Navegação por teclado', () => {
     await detail.reviewForm.getByLabel('Seu nome').focus()
     await page.keyboard.type('Bia')
     await page.keyboard.press('Tab')
-    // Setas percorrem as meias estrelas: da 1ª (0,5) até a 8ª (4 estrelas).
-    for (let i = 0; i < 7; i++) await page.keyboard.press('ArrowRight')
+    // Tab entra no grupo pela primeira opção (0); as setas avançam até 8.
+    for (let i = 0; i < 8; i++) await page.keyboard.press('ArrowRight')
     await page.keyboard.press('Tab')
     await page.keyboard.type('Muito bom.')
     await page.keyboard.press('Tab')
     await page.keyboard.press('Enter')
 
     await expect(detail.review('Bia')).toBeVisible()
-    await expect(detail.review('Bia').getByRole('img', { name: 'Nota 4 de 5 estrelas' })).toBeVisible()
+    await expect(detail.review('Bia').getByRole('img', { name: 'Nota 8 de 10' })).toBeVisible()
   })
 })

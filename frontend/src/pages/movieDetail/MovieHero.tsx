@@ -1,8 +1,8 @@
 import { type ReactNode, useState } from 'react'
 import type { MovieDetail } from '../../api/types'
 import { POSTER_PLACEHOLDER } from '../../components/MovieCard/poster'
-import { StarRating } from '../../components/StarRating/StarRating'
-import { formatRatingSummary } from './format'
+import { Rating } from '../../components/Rating/Rating'
+import { reviewCountLabel } from '../../components/Rating/nota'
 import styles from './MovieHero.module.css'
 
 // Tamanho do pôster w500 do TMDB (2:3); reserva o espaço antes da imagem carregar.
@@ -22,7 +22,7 @@ export function MovieHero({ movie, actions }: MovieHeroProps) {
   const posterSrc = movie.url_poster && !posterFailed ? movie.url_poster : POSTER_PLACEHOLDER
   // Sem fundo (ou se falhar), fica o gradiente do CSS.
   const backdropSrc = backdropFailed ? null : movie.url_backdrop
-  const summary = formatRatingSummary(movie.avaliacoes)
+  const { nota_media: notaMedia, qtd_avaliacoes: qtdAvaliacoes } = movie.avaliacoes
 
   return (
     <header className={styles.hero}>
@@ -48,12 +48,12 @@ export function MovieHero({ movie, actions }: MovieHeroProps) {
         <div className={styles.info}>
           <h1 className={styles.title}>{movie.titulo}</h1>
           {movie.ano_lancamento !== null && <p className={styles.year}>{movie.ano_lancamento}</p>}
-          {summary === null ? (
+          {notaMedia === null ? (
             <p className={styles.noRating}>Sem avaliações</p>
           ) : (
             <p className={styles.rating}>
-              <StarRating value={movie.avaliacoes.nota_media} />
-              <span>{summary}</span>
+              <Rating value={notaMedia} media size="lg" />
+              <span>{`Média de ${reviewCountLabel(qtdAvaliacoes)}`}</span>
             </p>
           )}
           <div className={styles.actions}>{actions}</div>

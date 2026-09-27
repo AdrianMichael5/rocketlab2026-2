@@ -1,10 +1,8 @@
 // Formatação dos dados do detalhe do filme para exibição em pt-BR.
-import type { PerformanceOut, ReviewSummaryOut } from '../../api/types'
-import { reviewCountLabel } from '../../components/StarRating/rating'
+import type { PerformanceOut } from '../../api/types'
 
 const UNKNOWN = '—'
 const MINUTES_PER_HOUR = 60
-const MAX_NOTA = 10
 
 /** Uma casa decimal fixa: "3,9", "8,0". */
 const oneDecimal = new Intl.NumberFormat('pt-BR', {
@@ -39,16 +37,6 @@ export function formatDuration(minutos: number | null): string {
     return `${resto}min`
   }
   return resto === 0 ? `${horas}h` : `${horas}h ${resto}min`
-}
-
-/** "3,9 ★ · 7,8/10 · 5 avaliações"; null quando o filme não tem avaliações. */
-export function formatRatingSummary(resumo: ReviewSummaryOut): string | null {
-  if (resumo.nota_media === null) {
-    return null
-  }
-  const estrelas = oneDecimal.format(resumo.nota_media / 2)
-  const nota = oneDecimal.format(resumo.nota_media)
-  return `${estrelas} ★ · ${nota}/${MAX_NOTA} · ${reviewCountLabel(resumo.qtd_avaliacoes)}`
 }
 
 /** "25 de maio de 1979" a partir de "1979-05-25". */

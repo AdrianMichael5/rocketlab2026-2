@@ -18,6 +18,14 @@ htmlcov/
 # Sistema operacional e IDE
 .DS_Store
 .vscode/
+*.stackdump
+
+# Artefatos de build e testes do frontend
+node_modules/
+dist/
+coverage/
+test-results/
+playwright-report/
 
 # Dados
 backend/data/bridge_movie_company.csv

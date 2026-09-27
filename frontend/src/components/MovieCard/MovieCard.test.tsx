@@ -55,10 +55,10 @@ describe('MovieCard', () => {
     expect(poster).toHaveAttribute('src', POSTER_PLACEHOLDER)
   })
 
-  it('mostra a média em estrelas e a quantidade de avaliações', () => {
+  it('mostra a média de 0 a 10 e a quantidade de avaliações', () => {
     renderCard({ nota_media: 9, qtd_avaliacoes: 2 })
 
-    expect(screen.getByRole('img', { name: 'Nota 4,5 de 5 estrelas' })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'Nota média 9,0 de 10' })).toBeInTheDocument()
     expect(screen.getByText('2 avaliações')).toBeInTheDocument()
   })
 
@@ -68,11 +68,11 @@ describe('MovieCard', () => {
     expect(screen.getByText('1 avaliação')).toBeInTheDocument()
   })
 
-  it('mostra "Sem avaliações" em vez de estrelas quando não há nota', () => {
+  it('mostra "Sem avaliações" em vez da nota quando não há nota', () => {
     renderCard({ nota_media: null, qtd_avaliacoes: 0 })
 
     expect(screen.getByText('Sem avaliações')).toBeInTheDocument()
-    expect(screen.queryByRole('img', { name: /estrelas/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('img', { name: /Nota/ })).not.toBeInTheDocument()
   })
 
   it('omite ano e gêneros desconhecidos', () => {

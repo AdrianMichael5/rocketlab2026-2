@@ -10,7 +10,7 @@ MAX_NOME = 120
 MAX_COMENTARIO = 4000
 MIN_NOTA = 0
 MAX_NOTA = 10
-# Meia estrela no frontend: nota = estrelas × 2, logo passos de 0.5.
+# Passos de 0.5 na API (7.5 vale, 7.3 não); o frontend oferece os inteiros de 0 a 10.
 PASSO_NOTA = 0.5
 # Casas decimais da média em dim_reviews (API e seed).
 CASAS_MEDIA = 2

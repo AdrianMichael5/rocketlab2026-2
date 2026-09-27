@@ -7,13 +7,14 @@ test.describe('Avaliar filme', () => {
     await detail.goto(movie.sk_movie_id)
     await expect(detail.noReviews).toBeVisible()
 
-    await detail.submitReview({ nome: 'Ana', estrelas: 4, comentario: 'Emocionante do início ao fim.' })
+    await detail.submitReview({ nome: 'Ana', nota: 8, comentario: 'Emocionante do início ao fim.' })
 
     await expect(detail.reviewForm.getByRole('status')).toHaveText('Avaliação enviada.')
     const review = detail.review('Ana')
     await expect(review).toContainText('Emocionante do início ao fim.')
-    await expect(review.getByRole('img', { name: 'Nota 4 de 5 estrelas' })).toBeVisible()
-    await expect(detail.text('4,0 ★ · 8,0/10 · 1 avaliação')).toBeVisible()
+    await expect(review.getByRole('img', { name: 'Nota 8 de 10' })).toBeVisible()
+    await expect(detail.averageRating('Nota média 8,0 de 10')).toBeVisible()
+    await expect(detail.text('Média de 1 avaliação')).toBeVisible()
     await expect(detail.noReviews).toHaveCount(0)
     // O formulário volta ao estado inicial para uma nova avaliação.
     await expect(detail.reviewForm.getByLabel('Seu nome')).toHaveValue('')
@@ -25,12 +26,13 @@ test.describe('Avaliar filme', () => {
     const movie = await api.createMovie({ titulo })
     await api.createReview(movie.sk_movie_id, { nome: 'Bruno', nota: 10, comentario: 'Obra-prima.' })
     await detail.goto(movie.sk_movie_id)
-    await expect(detail.text('5,0 ★ · 10,0/10 · 1 avaliação')).toBeVisible()
+    await expect(detail.averageRating('Nota média 10,0 de 10')).toBeVisible()
 
-    // Meia estrela: 2,5 estrelas = nota 5 → média (10 + 5) / 2 = 7,5.
-    await detail.submitReview({ nome: 'Carla', estrelas: 2.5, comentario: 'Achei irregular.' })
+    // Média (10 + 5) / 2 = 7,5.
+    await detail.submitReview({ nome: 'Carla', nota: 5, comentario: 'Achei irregular.' })
 
-    await expect(detail.text('3,8 ★ · 7,5/10 · 2 avaliações')).toBeVisible()
+    await expect(detail.averageRating('Nota média 7,5 de 10')).toBeVisible()
+    await expect(detail.text('Média de 2 avaliações')).toBeVisible()
     // Mais recente primeiro.
     await expect(detail.reviews.getByRole('listitem').first()).toContainText('Carla')
 

@@ -213,15 +213,15 @@ describe('MovieDetailPage — informações', () => {
 })
 
 describe('MovieDetailPage — média', () => {
-  it('mostra a média em estrelas e em número', async () => {
+  it('mostra a média de 0 a 10 e a quantidade', async () => {
     stubApi({
       movie: movieHandler(movieDetail({ avaliacoes: { nota_media: 7.8, qtd_avaliacoes: 5 } })),
     })
     renderRoute(PATH)
 
     await findTitle()
-    expect(screen.getByRole('img', { name: 'Nota 4 de 5 estrelas' })).toBeInTheDocument()
-    expect(screen.getByText('3,9 ★ · 7,8/10 · 5 avaliações')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'Nota média 7,8 de 10' })).toBeInTheDocument()
+    expect(screen.getByText('Média de 5 avaliações')).toBeInTheDocument()
   })
 
   it('mostra "Sem avaliações" quando não há média', async () => {
@@ -253,7 +253,7 @@ describe('MovieDetailPage — lista de avaliações', () => {
     const items = within(list).getAllByRole('listitem')
     expect(items).toHaveLength(2)
     expect(within(items[0]).getByRole('heading', { name: 'Ana' })).toBeInTheDocument()
-    expect(within(items[0]).getByRole('img', { name: 'Nota 4,5 de 5 estrelas' })).toBeInTheDocument()
+    expect(within(items[0]).getByRole('img', { name: 'Nota 9 de 10' })).toBeInTheDocument()
     expect(within(items[0]).getByText('25 de set. de 2026')).toBeInTheDocument()
     expect(within(items[0]).getByText('Obra-prima.')).toBeInTheDocument()
   })
@@ -301,13 +301,13 @@ describe('MovieDetailPage — lista de avaliações', () => {
 })
 
 describe('MovieDetailPage — nova avaliação', () => {
-  async function fillForm(nome: string, estrelas: string, comentario: string) {
+  async function fillForm(nome: string, nota: string, comentario: string) {
     await userEvent.type(await screen.findByLabelText('Seu nome'), nome)
-    await userEvent.click(screen.getByRole('radio', { name: estrelas }))
+    await userEvent.click(screen.getByRole('radio', { name: nota }))
     await userEvent.type(screen.getByLabelText('Comentário'), comentario)
   }
 
-  it('envia a nota como estrelas × 2 e atualiza média e lista', async () => {
+  it('envia a nota de 0 a 10 e atualiza média e lista', async () => {
     let created = false
     const { requestsTo } = stubApi({
       movie: () =>
@@ -329,10 +329,10 @@ describe('MovieDetailPage — nova avaliação', () => {
     renderRoute(PATH)
     await findTitle()
 
-    await fillForm('Carla', '3,5 estrelas', 'Bom suspense.')
+    await fillForm('Carla', 'Nota 7', 'Bom suspense.')
     await userEvent.click(screen.getByRole('button', { name: 'Enviar avaliação' }))
 
-    expect(await screen.findByText('3,5 ★ · 7,0/10 · 6 avaliações')).toBeInTheDocument()
+    expect(await screen.findByText('Média de 6 avaliações')).toBeInTheDocument()
     expect(requestsTo('POST', '/movies/m1/reviews')[0].body).toEqual({
       nome: 'Carla',
       nota: 7,
@@ -344,7 +344,7 @@ describe('MovieDetailPage — nova avaliação', () => {
     // Formulário volta vazio para uma nova avaliação.
     expect(screen.getByLabelText('Seu nome')).toHaveValue('')
     expect(screen.getByLabelText('Comentário')).toHaveValue('')
-    expect(screen.getByRole('radio', { name: '3,5 estrelas' })).not.toBeChecked()
+    expect(screen.getByRole('radio', { name: 'Nota 7' })).not.toBeChecked()
   })
 
   it('valida os campos antes de enviar', async () => {
@@ -365,7 +365,7 @@ describe('MovieDetailPage — nova avaliação', () => {
     const { requestsTo } = stubApi({ movie: movieHandler(movieDetail()) })
     renderRoute(PATH)
 
-    await fillForm('   ', '5 estrelas', '   ')
+    await fillForm('   ', 'Nota 10', '   ')
     await userEvent.click(screen.getByRole('button', { name: 'Enviar avaliação' }))
 
     expect(screen.getByText('Informe seu nome.')).toBeInTheDocument()
@@ -386,7 +386,7 @@ describe('MovieDetailPage — nova avaliação', () => {
     })
     renderRoute(PATH)
 
-    await fillForm('Ana', '5 estrelas', 'Ótimo')
+    await fillForm('Ana', 'Nota 10', 'Ótimo')
     await userEvent.click(screen.getByRole('button', { name: 'Enviar avaliação' }))
 
     expect(await screen.findByText('Texto longo demais')).toBeInTheDocument()
@@ -405,7 +405,7 @@ describe('MovieDetailPage — nova avaliação', () => {
     })
     renderRoute(PATH)
 
-    await fillForm('Ana', '5 estrelas', 'Ótimo')
+    await fillForm('Ana', 'Nota 10', 'Ótimo')
     await userEvent.click(screen.getByRole('button', { name: 'Enviar avaliação' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Erro interno')
@@ -418,7 +418,7 @@ describe('MovieDetailPage — nova avaliação', () => {
     })
     renderRoute(PATH)
 
-    await fillForm('Ana', '5 estrelas', 'Ótimo')
+    await fillForm('Ana', 'Nota 10', 'Ótimo')
     await userEvent.click(screen.getByRole('button', { name: 'Enviar avaliação' }))
 
     expect(await screen.findByRole('button', { name: 'Enviando…' })).toBeDisabled()
@@ -431,7 +431,7 @@ describe('MovieDetailPage — nova avaliação', () => {
     })
     renderRoute(PATH)
 
-    await fillForm('Ana', '5 estrelas', 'Ótimo')
+    await fillForm('Ana', 'Nota 10', 'Ótimo')
     await userEvent.click(screen.getByRole('button', { name: 'Enviar avaliação' }))
 
     await screen.findByRole('button', { name: 'Enviando…' })
@@ -448,7 +448,7 @@ describe('MovieDetailPage — nova avaliação', () => {
           : jsonResponse(page([])),
     })
     renderRoute(PATH)
-    await fillForm('Ana', '5 estrelas', 'Ótimo')
+    await fillForm('Ana', 'Nota 10', 'Ótimo')
     await userEvent.click(screen.getByRole('button', { name: 'Enviar avaliação' }))
     expect(await screen.findByText('Avaliação enviada.')).toBeInTheDocument()
 

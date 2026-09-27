@@ -1,0 +1,100 @@
+/* ---------------------------------------------------------------- selo */
+
+.rating {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 1px;
+  padding: 0.15em 0.45em;
+  border: 1px solid var(--color-rating);
+  border-radius: var(--radius-sm);
+  color: var(--color-rating);
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.scale {
+  color: var(--color-text-muted);
+  font-size: 0.75em;
+  font-weight: 600;
+}
+
+.sm {
+  font-size: var(--font-size-sm);
+}
+
+.md {
+  font-size: var(--font-size-md);
+}
+
+.lg {
+  font-size: var(--font-size-lg);
+}
+
+/* ---------------------------------------------------------------- entrada */
+
+/* 11 opções de 40×40px (acima dos 24px da WCAG 2.5.8); quebram linha em telas estreitas. */
+.options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.option {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--color-border-control);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-strong);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.option:hover {
+  border-color: var(--color-rating);
+}
+
+.option:has(.radio:checked) {
+  border-color: var(--color-rating);
+  background: var(--color-rating);
+  color: var(--color-bg);
+}
+
+.option:has(.radio:focus-visible) {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.options[aria-invalid='true'] .option {
+  border-color: var(--color-danger);
+}
+
+.options[aria-disabled='true'] .option {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Rádio invisível, mas focável e anunciado por leitores de tela. */
+.radio {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: inherit;
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

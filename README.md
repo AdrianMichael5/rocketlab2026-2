@@ -10,7 +10,7 @@ cadastro e avaliações. O usuário é o administrador do catálogo (não há lo
   na URL, então dá para compartilhar o link ou usar o botão Voltar do navegador.
 - **Detalhe do filme**: sinopse, elenco, ficha técnica (direção, gêneros, duração,
   roteiro, produtoras), bilheteria e notas externas (TMDB/IMDb).
-- **Avaliações**: nome, nota de ½ a 5 estrelas e comentário. A média e a quantidade de
+- **Avaliações**: nome, nota de 0 a 10 e comentário. A média e a quantidade de
   avaliações são atualizadas na hora, no detalhe e no catálogo.
 - **Cadastro, edição e remoção de filmes**, com diretores e gêneros como etiquetas.
   Gêneros e pessoas já existentes são reaproveitados pelo nome. A remoção pede
@@ -286,7 +286,7 @@ POST /api/v1/movies
 ├── frontend/
 │   ├── src/
 │   │   ├── api/            # cliente HTTP tipado, tipos da API, chaves do React Query
-│   │   ├── components/     # componentes reutilizáveis (cards, estrelas, modal, etiquetas…)
+│   │   ├── components/     # componentes reutilizáveis (cards, nota, modal, etiquetas…)
 │   │   ├── hooks/          # hooks genéricos (debounce, título da aba)
 │   │   ├── pages/          # uma página por rota + subpastas por tela
 │   │   ├── styles/         # tema (variáveis CSS globais)
@@ -302,21 +302,19 @@ camadas de rota, regra de negócio e acesso a dados (`router` → `service` →
 
 ## Decisões técnicas
 
-### Nota de 0 a 10 no banco e na API, estrelas no frontend
+### Nota de 0 a 10 em todo o sistema
 
-O enunciado fala em notas de **1 a 5**, mas os dados recebidos (`movies_reviews.csv`)
-usam a escala **0 a 10**, e a tabela tem uma `CHECK` com esse intervalo. Trocar a escala
-exigiria converter as avaliações existentes e perderia precisão: há notas como 9,8.
+O enunciado cita, como exemplo, notas de 1 a 5 estrelas. Os dados recebidos
+(`movies_reviews.csv`) usam a escala **0 a 10**, e a tabela tem uma `CHECK` com esse
+intervalo. Trocar a escala exigiria converter as avaliações existentes e perderia
+precisão (há notas como 9,8). Por isso o sistema inteiro usa **0 a 10**:
 
-Por isso:
-
-- **Banco e API usam 0–10.** O POST de avaliação aceita múltiplos de 0,5 (`7.3` → 422).
+- **Banco e API**: o POST de avaliação aceita de 0 a 10 em múltiplos de 0,5 (`7.3` → 422).
   As notas antigas do CSV, como 9,8, continuam válidas.
-- **O frontend exibe 5 estrelas com meia estrela.** A conversão é `nota = estrelas × 2`:
-  3½ estrelas equivalem a 7. Quem avalia continua vendo uma escala de 5 estrelas, como
-  pede o enunciado.
-- **Na exibição**, a média é arredondada para a meia estrela mais próxima e mostrada
-  também em números (ex.: "3,8 ★ · 7,5/10 · 2 avaliações").
+- **Formulário**: a nota é escolhida entre os inteiros de 0 a 10, em um grupo de opções
+  que também funciona pelo teclado (setas).
+- **Exibição**: cada avaliação mostra a nota como "8/10"; a média do filme aparece com uma
+  casa decimal ("7,5/10"), no catálogo e no detalhe.
 
 ### `dim_reviews` recalculada em vez de carregada do CSV
 

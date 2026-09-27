@@ -4,7 +4,6 @@ import {
   formatDuration,
   formatReleaseDate,
   formatReviewDate,
-  formatRatingSummary,
   performanceRows,
 } from './format'
 
@@ -47,34 +46,6 @@ describe('formatDuration', () => {
 
   it('omite os minutos em horas exatas', () => {
     expect(formatDuration(120)).toBe('2h')
-  })
-})
-
-describe('formatRatingSummary', () => {
-  it('mostra estrelas, nota de 0 a 10 e quantidade', () => {
-    expect(formatRatingSummary({ nota_media: 7.8, qtd_avaliacoes: 5 })).toBe(
-      '3,9 ★ · 7,8/10 · 5 avaliações',
-    )
-  })
-
-  it('não arredonda as estrelas do texto para meia estrela', () => {
-    expect(formatRatingSummary({ nota_media: 7.25, qtd_avaliacoes: 2 })).toMatch(/^3,6 ★/)
-  })
-
-  it('usa sempre uma casa decimal', () => {
-    expect(formatRatingSummary({ nota_media: 8, qtd_avaliacoes: 3 })).toBe(
-      '4,0 ★ · 8,0/10 · 3 avaliações',
-    )
-  })
-
-  it('usa o singular para uma avaliação', () => {
-    expect(formatRatingSummary({ nota_media: 10, qtd_avaliacoes: 1 })).toBe(
-      '5,0 ★ · 10,0/10 · 1 avaliação',
-    )
-  })
-
-  it('devolve null quando não há avaliações', () => {
-    expect(formatRatingSummary({ nota_media: null, qtd_avaliacoes: 0 })).toBeNull()
   })
 })
 

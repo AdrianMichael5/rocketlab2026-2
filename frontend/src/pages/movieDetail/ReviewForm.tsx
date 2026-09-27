@@ -4,7 +4,7 @@ import { splitFieldErrors } from '../../api/fieldErrors'
 import { movieKeys } from '../../api/queryKeys'
 import { createReview } from '../../api/reviews'
 import type { ReviewCreate } from '../../api/types'
-import { StarRating } from '../../components/StarRating/StarRating'
+import { NotaInput } from '../../components/Rating/NotaInput'
 import styles from './Reviews.module.css'
 
 // Limites de backend/app/reviews/schemas.py (MAX_NOME, MAX_COMENTARIO).
@@ -113,13 +113,15 @@ export function ReviewForm({ skMovieId, onCreated }: ReviewFormProps) {
       <div className={styles.field}>
         {/* O grupo de rádios já se anuncia como "Sua nota"; o rótulo visível é só visual. */}
         <span className={styles.label} aria-hidden="true">
-          Sua nota
+          Sua nota (0 a 10)
         </span>
-        <StarRating
+        <NotaInput
           value={values.nota}
           onChange={(nota) => update('nota', nota)}
-          label="Sua nota"
+          label="Sua nota (0 a 10)"
           disabled={mutation.isPending}
+          invalid={errors.nota ? true : undefined}
+          describedBy={errors.nota ? `${id}-nota-erro` : undefined}
         />
         <FieldError id={`${id}-nota-erro`} message={errors.nota} />
       </div>

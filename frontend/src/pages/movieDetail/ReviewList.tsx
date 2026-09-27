@@ -1,5 +1,5 @@
 import type { ReviewOut } from '../../api/types'
-import { StarRating } from '../../components/StarRating/StarRating'
+import { Rating } from '../../components/Rating/Rating'
 import { formatReviewDate } from './format'
 import styles from './Reviews.module.css'
 
@@ -17,7 +17,7 @@ export function ReviewList({ reviews, isStale = false }: ReviewListProps) {
           <article>
             <header className={styles.itemHeader}>
               <h3 className={styles.name}>{review.nome}</h3>
-              <StarRating value={review.nota} size="sm" />
+              <Rating value={review.nota} size="sm" />
               <time dateTime={review.created_at} className={styles.date}>
                 {formatReviewDate(review.created_at)}
               </time>

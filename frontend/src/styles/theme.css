@@ -9,6 +9,8 @@
   --color-surface: #1c2228;
   --color-surface-raised: #2c3440;
   --color-border: #2c3440;
+  /* Contorno de campos: ≥ 3:1 com o fundo ao redor (WCAG 1.4.11); --color-border some nele. */
+  --color-border-control: #678;
   --color-text: #9ab;
   --color-text-strong: #def;
   --color-text-muted: #89a;
@@ -93,6 +95,12 @@ a:hover {
 img {
   display: block;
   max-width: 100%;
+}
+
+/* Texto de exemplo precisa de 4,5:1 sobre o fundo dos campos; --color-text-muted fica em 4,3. */
+::placeholder {
+  color: var(--color-text);
+  opacity: 1;
 }
 
 :focus-visible {

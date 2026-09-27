@@ -15,9 +15,11 @@
   --star-size: 18px;
 }
 
+/* Entrada: cada meia estrela é um alvo de 24×48px (WCAG 2.5.8); 5 estrelas = 248px,
+   cabe no formulário em telas de 320px. */
 .lg {
-  --star-size: 32px;
-  --star-gap: 4px;
+  --star-size: 48px;
+  --star-gap: 2px;
 }
 
 .star {

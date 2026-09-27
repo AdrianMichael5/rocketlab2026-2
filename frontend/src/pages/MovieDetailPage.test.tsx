@@ -47,7 +47,10 @@ describe('MovieDetailPage — carregamento e erros', () => {
     stubApi()
     renderRoute(PATH)
 
-    expect(await screen.findByRole('heading', { name: 'Filme não encontrado' })).toBeInTheDocument()
+    // É o título da página: sem ele o detalhe ficaria sem <h1>.
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Filme não encontrado' }),
+    ).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Voltar para os filmes' })).toHaveAttribute('href', '/')
   })
 

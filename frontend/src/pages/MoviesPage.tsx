@@ -2,13 +2,14 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { listGenres } from '../api/genres'
 import { listMovies } from '../api/movies'
-import { movieKeys } from '../api/queryKeys'
+import { genreKeys, movieKeys } from '../api/queryKeys'
 import type { MovieListItem, Page } from '../api/types'
 import { CatalogToolbar } from '../components/CatalogToolbar/CatalogToolbar'
 import { MovieCard } from '../components/MovieCard/MovieCard'
 import { MovieCardSkeleton } from '../components/MovieCard/MovieCardSkeleton'
 import { Pagination } from '../components/Pagination/Pagination'
 import { StatusMessage } from '../components/StatusMessage/StatusMessage'
+import { usePageTitle } from '../hooks/usePageTitle'
 import {
   CATALOG_PAGE_SIZE,
   type CatalogParams,
@@ -32,6 +33,7 @@ function hasActiveFilters(params: CatalogParams): boolean {
 
 /** Catálogo: busca, filtros, ordenação e paginação, com o estado na URL. */
 export function MoviesPage() {
+  usePageTitle('Filmes')
   const { params, update, clear } = useCatalogParams()
   const filters = toMovieFilters(params)
   const movies = useQuery({
@@ -41,7 +43,7 @@ export function MoviesPage() {
     placeholderData: keepPreviousData,
   })
   const genres = useQuery({
-    queryKey: ['genres'],
+    queryKey: genreKeys.all(),
     queryFn: ({ signal }) => listGenres(signal),
     staleTime: Infinity,
   })

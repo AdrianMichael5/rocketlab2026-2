@@ -6,15 +6,20 @@ interface NavItem {
   label: string
   /** Só ativo na rota exata (evita "/" ativo em todas as páginas). */
   end?: boolean
+  /** Ação principal, com visual de botão. */
+  primary?: boolean
 }
 
 const NAV_ITEMS: NavItem[] = [
   { to: '/', label: 'Filmes', end: true },
-  { to: '/filmes/novo', label: 'Adicionar filme' },
+  { to: '/filmes/novo', label: 'Novo filme', primary: true },
 ]
 
-function navLinkClass({ isActive }: { isActive: boolean }): string {
-  return isActive ? `${styles.link} ${styles.active}` : styles.link
+function navLinkClass(item: NavItem) {
+  return ({ isActive }: { isActive: boolean }): string =>
+    [item.primary ? styles.primary : styles.link, isActive && styles.active]
+      .filter(Boolean)
+      .join(' ')
 }
 
 export function Header() {
@@ -31,7 +36,7 @@ export function Header() {
           <ul className={styles.nav}>
             {NAV_ITEMS.map((item) => (
               <li key={item.to}>
-                <NavLink to={item.to} end={item.end} className={navLinkClass}>
+                <NavLink to={item.to} end={item.end} className={navLinkClass(item)}>
                   {item.label}
                 </NavLink>
               </li>

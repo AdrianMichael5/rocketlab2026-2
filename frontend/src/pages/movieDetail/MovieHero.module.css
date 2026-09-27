@@ -28,15 +28,15 @@
 .content {
   position: relative;
   display: grid;
-  grid-template-columns: 110px minmax(0, 1fr);
-  align-items: end;
+  /* Celular: empilhado, para o título usar a largura toda (lado a lado sobrava ~140px). */
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
   margin-top: -56px;
   padding-inline: var(--space-2);
 }
 
 .poster {
-  width: 100%;
+  width: 120px;
   height: auto;
   aspect-ratio: 2 / 3;
   object-fit: cover;
@@ -79,8 +79,13 @@
 @media (min-width: 640px) {
   .content {
     grid-template-columns: 200px minmax(0, 1fr);
+    align-items: end;
     gap: var(--space-6);
     margin-top: -120px;
     padding-inline: var(--space-6);
+  }
+
+  .poster {
+    width: 100%;
   }
 }

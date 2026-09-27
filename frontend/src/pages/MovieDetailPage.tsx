@@ -1,18 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ApiError } from '../api/client'
 import { deleteMovie, getMovie } from '../api/movies'
 import { movieKeys } from '../api/queryKeys'
 import type { MovieDetail } from '../api/types'
 import { ConfirmDialog } from '../components/ConfirmDialog/ConfirmDialog'
-import { StatusMessage } from '../components/StatusMessage/StatusMessage'
+import { usePageTitle } from '../hooks/usePageTitle'
 import styles from './MovieDetailPage.module.css'
 import { MovieFacts } from './movieDetail/MovieFacts'
 import { MovieHero } from './movieDetail/MovieHero'
+import { movieLoadErrorTitle } from './movieDetail/loadError'
+import { MovieLoadError } from './movieDetail/MovieLoadError'
 import { ReviewsSection } from './movieDetail/ReviewsSection'
-
-const NOT_FOUND_STATUS = 404
 
 /** Detalhe do filme: informações, média, avaliações e ações de editar/remover. */
 export function MovieDetailPage() {
@@ -21,6 +20,7 @@ export function MovieDetailPage() {
     queryKey: movieKeys.detail(skMovieId),
     queryFn: ({ signal }) => getMovie(skMovieId, signal),
   })
+  usePageTitle(movie.data?.titulo ?? (movie.error ? movieLoadErrorTitle(movie.error) : null))
 
   // Dados antes do erro: uma nova busca que falha não esconde o filme já exibido.
   if (movie.data) {
@@ -30,25 +30,12 @@ export function MovieDetailPage() {
   if (movie.isPending) {
     return <LoadingDetail />
   }
-  if (movie.error instanceof ApiError && movie.error.status === NOT_FOUND_STATUS) {
-    return (
-      <StatusMessage
-        title="Filme não encontrado"
-        description="Ele pode ter sido removido ou o endereço está incorreto."
-        action={<Link to="/">Voltar para os filmes</Link>}
-      />
-    )
-  }
   return (
-    <StatusMessage
-      tone="error"
-      title="Não foi possível carregar o filme"
-      description={movie.error.message}
-      action={
-        <button type="button" disabled={movie.isFetching} onClick={() => movie.refetch()}>
-          {movie.isFetching ? 'Tentando…' : 'Tentar novamente'}
-        </button>
-      }
+    <MovieLoadError
+      isPageTitle
+      error={movie.error}
+      isRetrying={movie.isFetching}
+      onRetry={() => movie.refetch()}
     />
   )
 }

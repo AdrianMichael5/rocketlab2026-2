@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { type FormEvent, useId, useState } from 'react'
-import { ApiError } from '../../api/client'
+import { splitFieldErrors } from '../../api/fieldErrors'
 import { movieKeys } from '../../api/queryKeys'
 import { createReview } from '../../api/reviews'
 import type { ReviewCreate } from '../../api/types'
@@ -21,34 +21,13 @@ interface ReviewValues {
 }
 
 const EMPTY_VALUES: ReviewValues = { nome: '', nota: null, comentario: '' }
-const CAMPOS: readonly string[] = ['nome', 'nota', 'comentario'] satisfies Campo[]
+const CAMPOS: readonly Campo[] = ['nome', 'nota', 'comentario']
 
 function validate(values: ReviewValues): FieldErrors {
   return {
     ...(values.nome.trim() === '' && { nome: 'Informe seu nome.' }),
     ...(values.nota === null && { nota: 'Escolha uma nota.' }),
     ...(values.comentario.trim() === '' && { comentario: 'Escreva um comentário.' }),
-  }
-}
-
-function isCampo(campo: string): campo is Campo {
-  return CAMPOS.includes(campo)
-}
-
-/** Erros 422 de campos conhecidos vão para o campo; o resto vira mensagem geral. */
-function splitApiError(error: Error): { fields: FieldErrors; general: string | null } {
-  if (!(error instanceof ApiError) || error.fieldErrors.length === 0) {
-    return { fields: {}, general: error.message }
-  }
-  const known = error.fieldErrors.filter(({ campo }) => isCampo(campo))
-  const others = error.fieldErrors.filter(({ campo }) => !isCampo(campo))
-  // Invertido para o primeiro erro de cada campo prevalecer em fromEntries.
-  const fields = Object.fromEntries(
-    known.toReversed().map(({ campo, mensagem }) => [campo, mensagem]),
-  ) as FieldErrors
-  return {
-    fields,
-    general: others.length > 0 ? others.map(({ mensagem }) => mensagem).join(' ') : null,
   }
 }
 
@@ -76,9 +55,9 @@ export function ReviewForm({ skMovieId, onCreated }: ReviewFormProps) {
       void queryClient.invalidateQueries({ queryKey: movieKeys.detail(skMovieId) })
       void queryClient.invalidateQueries({ queryKey: movieKeys.lists() })
     },
-    onError: (error) => setErrors(splitApiError(error).fields),
+    onError: (error) => setErrors(splitFieldErrors(error, CAMPOS).fields),
   })
-  const generalError = mutation.error ? splitApiError(mutation.error).general : null
+  const generalError = mutation.error ? splitFieldErrors(mutation.error, CAMPOS).general : null
 
   function update<K extends Campo>(campo: K, value: ReviewValues[K]) {
     setValues((current) => ({ ...current, [campo]: value }))

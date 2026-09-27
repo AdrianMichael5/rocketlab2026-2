@@ -1,6 +1,7 @@
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  /* 128px: duas colunas já em 320px (288px úteis), sem pôster ocupando a tela toda. */
+  grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
   gap: var(--space-4) var(--space-3);
   margin: 0;
   padding: 0;

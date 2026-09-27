@@ -11,3 +11,7 @@ export const movieKeys = {
   detail: (skMovieId: string) => ['movie', skMovieId] as const,
   reviews: (skMovieId: string, page: number) => ['movie', skMovieId, 'reviews', page] as const,
 }
+
+export const genreKeys = {
+  all: () => ['genres'] as const,
+}

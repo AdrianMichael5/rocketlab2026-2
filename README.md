@@ -1,170 +1,384 @@
-# RocketLab 2026.2 — repositório base
+# RocketLab Filmes — Sistema de Avaliação de Filmes
 
-Base inicial para evoluir a atividade do RocketLab 2026.2. Ela preserva a organização do backend,
-o modelo relacional do catálogo de filmes em SQLAlchemy 2.0 e o histórico de
-migrações com Alembic, a API de filmes e avaliações e o frontend em React.
+Projeto do **Visagio Rocket Lab 2026**: um catálogo de ~95 mil filmes com busca,
+cadastro e avaliações. O usuário é o administrador do catálogo (não há login).
 
-> **Nota:** `RocketLab` é apenas o nome de referência desta base. O diretório,
-> nome do pacote, título da API e arquivo do banco podem ser renomeados para o
-> que preferirem; eles não representam uma exigência da
-> estrutura-base.
+## Funcionalidades
 
-## Estrutura
+- **Catálogo paginado** com busca por trecho do título (sem diferenciar maiúsculas),
+  filtros por gênero e ano e ordenação por título, ano ou nota. O estado da busca fica
+  na URL, então dá para compartilhar o link ou usar o botão Voltar do navegador.
+- **Detalhe do filme**: sinopse, elenco, ficha técnica (direção, gêneros, duração,
+  roteiro, produtoras), bilheteria e notas externas (TMDB/IMDb).
+- **Avaliações**: nome, nota de ½ a 5 estrelas e comentário. A média e a quantidade de
+  avaliações são atualizadas na hora, no detalhe e no catálogo.
+- **Cadastro, edição e remoção de filmes**, com diretores e gêneros como etiquetas.
+  Gêneros e pessoas já existentes são reaproveitados pelo nome. A remoção pede
+  confirmação.
+- **Acessível e responsivo**: WCAG 2.2 AA verificado com axe em 320px, 768px e 1280px,
+  uso completo pelo teclado e títulos de aba por página.
+
+## Stack
+
+| Camada | Tecnologias |
+|---|---|
+| Backend | Python 3.11+, FastAPI, SQLAlchemy 2.0 (async), Alembic, Pydantic 2, SQLite (aiosqlite) |
+| Frontend | React 19, TypeScript, Vite, React Router, TanStack Query, CSS Modules |
+| Testes | pytest + httpx; Vitest + Testing Library; Playwright + axe-core (E2E e acessibilidade) |
+| Qualidade | Ruff (backend), ESLint + `tsc` (frontend) |
+
+## Pré-requisitos
+
+- **Python 3.11 ou superior**
+- **Node.js 22.12 ou superior** (exigência do Vitest 5)
+- **Os CSVs de dados** da camada Diamond (não versionados; veja o passo 4 abaixo)
+- Para os testes E2E: **Google Chrome** instalado ou o Chromium do Playwright (veja
+  [Testes E2E](#testes-e2e-playwright))
+
+## Como rodar
+
+Os comandos abaixo partem da raiz do repositório. Onde o comando muda entre sistemas,
+há uma versão para **Windows (PowerShell)** e outra para **Linux/Mac**.
+
+### Backend
+
+**1. Criar e ativar o ambiente virtual**
+
+Windows (PowerShell):
+
+```powershell
+cd backend
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+```
+
+> Se o PowerShell bloquear o script de ativação, libere para o usuário atual uma única
+> vez: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
+
+Linux/Mac:
+
+```bash
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+Com o ambiente ativado, os comandos dos próximos passos são iguais nos dois sistemas.
+
+**2. Instalar as dependências** (inclui as de teste e lint)
+
+```bash
+python -m pip install -e ".[dev]"
+```
+
+**3. Criar o `.env`**
+
+Windows: `Copy-Item .env.example .env` · Linux/Mac: `cp .env.example .env`
+
+Os valores padrão já funcionam. As variáveis disponíveis são:
+
+| Variável | Padrão | Para que serve |
+|---|---|---|
+| `DATABASE_URL` | `sqlite+aiosqlite:///./rocketlab.db` | Banco de dados (arquivo `backend/rocketlab.db`) |
+| `BACKEND_CORS_ORIGINS` | `["http://localhost:5173"]` | Origens liberadas no CORS (a do frontend) |
+| `ENVIRONMENT` | `local` | Em `local`, o SQLAlchemy registra cada SQL no console |
+| `LOG_LEVEL` | `INFO` | Nível de log |
+
+**4. Colocar os CSVs em `backend/data/`**
+
+O seed espera estes arquivos, com estes nomes, direto em `backend/data/`:
+
+```text
+backend/data/
+├── dim_genres.csv
+├── dim_companies.csv
+├── dim_people.csv
+├── dim_movies.csv
+├── bridge_movie_genre.csv
+├── bridge_movie_company.csv
+├── bridge_movie_person.csv
+├── fact_movies_performance.csv
+├── movies_reviews.csv
+└── dim_reviews.csv        # opcional: é ignorado (veja "Decisões técnicas")
+```
+
+Os CSVs estão no `.gitignore` e não vão para o repositório.
+
+**5. Criar as tabelas**
+
+```bash
+alembic upgrade head
+```
+
+O schema é criado só pelo Alembic, nunca por `create_all`.
+
+**6. Carregar os dados (seed)**
+
+```bash
+python -m scripts.seed
+```
+
+- **Duração:** carrega ~1,7 milhão de linhas em cerca de **3 minutos** e mostra o progresso
+  de cada tabela.
+- **Pode rodar de novo:** o seed limpa e recarrega tudo numa única transação. Se algo
+  falhar, o banco fica como estava.
+- **Cuidado:** avaliações e filmes criados pela aplicação são apagados ao rodar de novo.
+
+**7. Subir a API**
+
+```bash
+uvicorn app.main:app --reload
+```
+
+- API: <http://localhost:8000>
+- Documentação interativa (Swagger): <http://localhost:8000/docs>
+- Checagem de saúde: <http://localhost:8000/health>
+
+### Frontend
+
+Em outro terminal, a partir da raiz do repositório:
+
+**1. Instalar as dependências**
+
+```bash
+cd frontend
+npm install
+```
+
+**2. Criar o `.env`** (opcional)
+
+Windows: `Copy-Item .env.example .env` · Linux/Mac: `cp .env.example .env`
+
+A única variável é `VITE_API_URL`, a URL base da API **incluindo** `/api/v1`. Sem o
+arquivo, o padrão é `http://localhost:8000/api/v1`.
+
+**3. Subir o servidor de desenvolvimento**
+
+```bash
+npm run dev
+```
+
+Acesse <http://localhost:5173>. Essa origem já está liberada no CORS do backend.
+
+Para gerar a versão de produção: `npm run build` (sai em `frontend/dist/`).
+
+## Testes
+
+### Backend
+
+Com o ambiente virtual ativado, dentro de `backend/`:
+
+```bash
+ruff check .                                   # lint
+pytest                                         # 181 testes (API, modelos, seed, concorrência)
+pytest --cov=app --cov-report=term-missing     # com cobertura (~99%)
+```
+
+Os testes usam SQLite em memória e não tocam no `rocketlab.db`.
+
+### Frontend (unitários e de componentes)
+
+Dentro de `frontend/`:
+
+```bash
+npm run lint            # ESLint
+npm run build           # checagem de tipos + build
+npm test                # 322 testes (Vitest + Testing Library)
+npm run test:coverage   # com cobertura (~99%)
+```
+
+### Testes E2E (Playwright)
+
+Os testes E2E cobrem os fluxos de ponta a ponta:
+
+- buscar filme, abrir detalhe e avaliar;
+- cadastrar, editar e remover filme;
+- acessibilidade (axe) e layout em 320px, 768px e 1280px;
+- navegação só pelo teclado.
+
+Dentro de `frontend/`:
+
+```bash
+npm run test:e2e        # roda tudo, sem janela
+npm run test:e2e:ui     # modo interativo do Playwright
+```
+
+**Não é preciso subir nada antes.** O Playwright inicia sozinho:
+
+- uma API na porta **8001**, com um banco descartável (`backend/e2e.db`) criado do zero
+  pelo Alembic;
+- um frontend na porta **5174**.
+
+O banco de desenvolvimento não é tocado. O único requisito é que o venv do backend
+exista (passos 1 e 2 do backend).
+
+Por padrão, os testes usam o **Google Chrome** instalado na máquina. Para usar o
+Chromium que acompanha o Playwright (por exemplo, em CI):
+
+Windows (PowerShell):
+
+```powershell
+npx playwright install chromium
+$env:PW_CHANNEL = "chromium"; npm run test:e2e
+```
+
+Linux/Mac:
+
+```bash
+npx playwright install chromium
+PW_CHANNEL=chromium npm run test:e2e
+```
+
+O relatório HTML fica em `frontend/playwright-report/` (`npx playwright show-report`).
+
+## Endpoints principais
+
+Todas as rotas ficam sob `/api/v1`. A documentação completa, com os schemas, está em
+`/docs`.
+
+| Método | Rota | Descrição | Respostas |
+|---|---|---|---|
+| GET | `/movies` | Lista paginada. Parâmetros: `q` (trecho do título), `genero`, `ano`, `ordem` (`titulo` \| `ano` \| `nota`), `page`, `page_size` (padrão 20, máx. 100) | 200, 422 |
+| GET | `/movies/{sk_movie_id}` | Detalhe: dados, diretores, gêneros, elenco, bilheteria, média | 200, 404 |
+| POST | `/movies` | Cadastra filme (`titulo` obrigatório; `diretores` e `generos` como listas) | 201, 409, 422 |
+| PATCH | `/movies/{sk_movie_id}` | Atualiza só os campos enviados | 200, 404, 409, 422 |
+| DELETE | `/movies/{sk_movie_id}` | Remove o filme com avaliações, métricas e vínculos | 204, 404 |
+| GET | `/movies/{sk_movie_id}/reviews` | Avaliações paginadas, mais recentes primeiro | 200, 404 |
+| POST | `/movies/{sk_movie_id}/reviews` | Cria avaliação (`nome`, `nota`, `comentario`) e recalcula a média | 201, 404, 422 |
+| DELETE | `/reviews/{sk_movie_review_id}` | Remove avaliação e recalcula a média | 204, 404 |
+| GET | `/genres` | Gêneros que têm filmes (para o filtro do catálogo) | 200 |
+| GET | `/health` | Saúde da aplicação (fora de `/api/v1`) | 200 |
+
+Listagens paginadas devolvem sempre `{ "items": [...], "total", "page", "page_size" }`.
+Erros de validação (422) seguem o formato padrão do FastAPI, que o frontend usa para
+mostrar a mensagem ao lado do campo certo.
+
+Exemplo de cadastro:
+
+```json
+POST /api/v1/movies
+{
+  "titulo": "Interestelar",
+  "ano_lancamento": 2014,
+  "duracao_minutos": 169,
+  "diretores": ["Christopher Nolan"],
+  "generos": ["Ficção científica", "Drama"]
+}
+```
+
+## Estrutura de pastas
 
 ```text
 .
 ├── backend/
 │   ├── app/
-│   │   ├── api/v1/        # ponto de composição dos futuros routers
-│   │   ├── core/          # configurações e logging
-│   │   ├── db/            # Base ORM, engine e sessões
-│   │   └── movies/        # modelos SQLAlchemy do domínio de filmes
-│   ├── migrations/        # ambiente e revisões Alembic
-│   └── tests/
+│   │   ├── api/            # dependências comuns (sessão, paginação) e router v1
+│   │   ├── core/           # configurações (.env) e logging
+│   │   ├── db/             # Base ORM, engine e sessões
+│   │   ├── movies/         # domínio de filmes: models, schemas, repository, service, router
+│   │   ├── reviews/        # domínio de avaliações (mesma divisão em camadas)
+│   │   ├── genres/         # listagem de gêneros
+│   │   └── main.py         # criação da aplicação FastAPI
+│   ├── migrations/         # ambiente e revisões do Alembic
+│   ├── scripts/seed.py     # carga dos CSVs
+│   ├── data/               # CSVs (não versionados)
+│   └── tests/              # pytest
 ├── frontend/
-│   └── src/
-│       ├── api/           # cliente HTTP tipado, tipos espelhando o backend, React Query
-│       ├── components/    # Layout (cabeçalho/navegação) e StarRating
-│       ├── pages/         # páginas das rotas
-│       └── styles/        # tema escuro (variáveis CSS globais)
+│   ├── src/
+│   │   ├── api/            # cliente HTTP tipado, tipos da API, chaves do React Query
+│   │   ├── components/     # componentes reutilizáveis (cards, estrelas, modal, etiquetas…)
+│   │   ├── hooks/          # hooks genéricos (debounce, título da aba)
+│   │   ├── pages/          # uma página por rota + subpastas por tela
+│   │   ├── styles/         # tema (variáveis CSS globais)
+│   │   └── test/           # utilitários dos testes (mock da API, render com providers)
+│   ├── e2e/                # testes Playwright: specs, page objects e subida da API de teste
+│   └── playwright.config.ts
 └── README.md
 ```
 
-## Execução
+Backend e frontend são organizados **por domínio**. No backend, cada domínio separa as
+camadas de rota, regra de negócio e acesso a dados (`router` → `service` →
+`repository`).
 
-Requer Python 3.11 ou superior.
+## Decisões técnicas
 
-```bash
-cd backend
-python3 -m venv .venv
-.venv/bin/pip install -e ".[dev]"
-cp .env.example .env
-.venv/bin/alembic upgrade head
-.venv/bin/uvicorn app.main:app --reload
-```
+### Nota de 0 a 10 no banco e na API, estrelas no frontend
 
-A API mínima ficará disponível em `http://localhost:8000`; use
-`http://localhost:8000/docs` para a documentação automática. O endpoint
-`GET /health` permite conferir se a aplicação iniciou corretamente.
+O enunciado fala em notas de **1 a 5**, mas os dados recebidos (`movies_reviews.csv`)
+usam a escala **0 a 10**, e a tabela tem uma `CHECK` com esse intervalo. Trocar a escala
+exigiria converter as avaliações existentes e perderia precisão: há notas como 9,8.
 
-## Frontend
+Por isso:
 
-Vite + React + TypeScript, com React Router e TanStack Query. Requer Node 22.12 ou
-superior (exigência do Vitest 5; o Vite 8 aceita a partir do 20.19).
+- **Banco e API usam 0–10.** O POST de avaliação aceita múltiplos de 0,5 (`7.3` → 422).
+  As notas antigas do CSV, como 9,8, continuam válidas.
+- **O frontend exibe 5 estrelas com meia estrela.** A conversão é `nota = estrelas × 2`:
+  3½ estrelas equivalem a 7. Quem avalia continua vendo uma escala de 5 estrelas, como
+  pede o enunciado.
+- **Na exibição**, a média é arredondada para a meia estrela mais próxima e mostrada
+  também em números (ex.: "3,8 ★ · 7,5/10 · 2 avaliações").
 
-```bash
-cd frontend
-npm install
-cp .env.example .env   # opcional: sem ele, a API padrão é http://localhost:8000/api/v1
-npm run dev            # http://localhost:5173 (origem já liberada no CORS do backend)
-```
+### `dim_reviews` recalculada em vez de carregada do CSV
 
-| Script | O que faz |
+`dim_reviews.csv` (quantidade e média de avaliações por filme) **não bate** com as
+avaliações individuais de `movies_reviews.csv`. Comparando os dois arquivos:
+
+| Problema | Filmes afetados |
 |---|---|
-| `npm run dev` | servidor de desenvolvimento |
-| `npm run build` | checagem de tipos (`tsc -b`) + build de produção em `dist/` |
-| `npm run lint` | ESLint |
-| `npm test` | testes (Vitest + Testing Library) |
-| `npm run test:coverage` | testes com cobertura |
+| Filme com avaliações que não aparece no `dim_reviews.csv` | 14.561 (de 40.267 avaliados) |
+| Quantidade de avaliações diferente | 4.503 |
+| Mesma quantidade, mas média diferente | 4.091 |
 
-Decisões do frontend:
+Por isso o seed **ignora** `dim_reviews.csv` e, depois de carregar `movie_reviews`,
+recalcula o resumo com `COUNT` e `ROUND(AVG, 2)`: 40.267 filmes com resumo. A mesma
+regra é aplicada pela API: criar ou remover uma avaliação recalcula o resumo daquele
+filme **na mesma transação**. Assim, a média exibida nunca diverge das avaliações.
 
-- `VITE_API_URL` define a URL base da API, **incluindo** `/api/v1`.
-- Os tipos em `src/api/types.ts` são mantidos à mão e usam os mesmos nomes de campo dos
-  schemas do backend (`app/movies/schemas.py`, `app/reviews/schemas.py`); atualize-os
-  junto com qualquer mudança de contrato.
-- Erros da API viram `ApiError` com `status` e `fieldErrors` (`{campo, mensagem}`, a
-  partir dos 422 do FastAPI); falha de rede usa `status` 0. Consultas não são repetidas
-  em erros 4xx.
-- Estilo com CSS Modules e variáveis CSS em `src/styles/theme.css` (tema escuro
-  inspirado na paleta do Letterboxd), sem framework de UI.
-- `StarRating` exibe a nota 0–10 como 5 estrelas com meia (`estrelas = nota / 2`,
-  arredondado à meia estrela mais próxima). No modo de entrada, oferece de ½ a 5
-  estrelas e devolve a nota 1–10; nota 0 não é selecionável pelas estrelas.
+### Diretores como lista
 
-## API de filmes (`/api/v1/movies`)
+Diretor não é uma coluna de `dim_movies`. É uma pessoa em `dim_people` com
+`tipo_pessoa = "Diretor"`, ligada ao filme por `bridge_movie_person`. Como a ponte
+permite vários diretores por filme (e **9.380 filmes** dos dados têm mais de um), a
+API expõe `diretores: list[str]` em vez de um campo único. Assim nenhum dado é
+descartado.
 
-| Método | Rota | Sucesso | Erros |
-|---|---|---|---|
-| GET | `/api/v1/movies` | 200 `{items, total, page, page_size}` | 422 |
-| GET | `/api/v1/movies/{sk_movie_id}` | 200 | 404 |
-| POST | `/api/v1/movies` | 201 com o detalhe | 409, 422 |
-| PATCH | `/api/v1/movies/{sk_movie_id}` | 200 com o detalhe | 404, 409, 422 |
-| DELETE | `/api/v1/movies/{sk_movie_id}` | 204 | 404 |
+- **Ao salvar**, cada nome é procurado em `dim_people` (única por nome + tipo) e
+  reaproveitado; só nomes novos são criados. Gêneros seguem a mesma ideia, por nome
+  e sem diferenciar maiúsculas ("drama" usa o "Drama" existente).
+- **No PATCH**, enviar `diretores` substitui a lista inteira (`[]` limpa). Atores e
+  roteiristas do filme são preservados.
 
-Decisões da escrita de filmes:
+### Inserção em lote no seed
 
-- Campos aceitos: `titulo` (obrigatório na criação), `id_filme`, `ano_lancamento`
-  (1888–2100), `data_lancamento`, `sinopse`, `duracao_minutos` (0 = desconhecida),
-  `status_filme`, `url_poster`, `diretores` e `generos`. Campos fora dessa lista → 422.
-- `url_poster` precisa ser uma URL `http(s)` absoluta (como as do TMDB); outros esquemas
-  (`javascript:`, `data:`, caminhos relativos) → 422.
-- `sinopse`, `status_filme` e `url_poster` vazios ou só com espaços são gravados como NULL,
-  seguindo a regra da carga dos CSVs.
-- Erros 422 de consistência (ano × data já salva) usam o mesmo formato de `detail` do
-  FastAPI: `[{"loc": ["body", campo], "msg": ..., "type": "value_error"}]`.
-- `id_filme` omitido é gerado como `local-<uuid hex>`; um `id_filme` já usado → **409**.
-- `data_lancamento` sem `ano_lancamento` preenche o ano; os dois divergentes → 422.
-- Gêneros são reaproveitados pelo nome sem diferenciar caixa ("drama" → "Drama");
-  diretores pelo nome exato (a unicidade de `dim_people` é por nome + tipo).
-- No PATCH só os campos enviados mudam; `diretores`/`generos` substituem a lista
-  inteira (`[]` limpa) e não aceitam `null`, assim como `titulo` e `id_filme`.
-  Trocar diretores preserva atores e roteiristas.
-- DELETE remove avaliações, resumo, métricas e vínculos via `ON DELETE CASCADE`;
-  pessoas, gêneros e produtoras permanecem.
+O volume é grande: 95 mil filmes, 424 mil pessoas e 745 mil vínculos filme–pessoa. O
+ORM linha a linha (`session.add` por registro) levaria dezenas de minutos e muita
+memória. O seed usa então:
 
-## API de avaliações
+- **`INSERT` do SQLAlchemy Core** com várias linhas por comando, em **lotes de 5.000**,
+  lendo cada CSV em streaming (sem carregar o arquivo inteiro na memória);
+- **uma única transação** para toda a carga: ou entra tudo, ou nada;
+- **conversões na leitura**:
+  - string vazia vira `NULL`;
+  - `qtd_tmdb`/`qtd_imdb` chegam como float (`"2375.0"`) e viram inteiro;
+  - `data_lancamento` vira `date`;
+  - aspas extras no início e no fim das sinopses são removidas;
+- **ordem de dependências**: dimensões → pontes → fato → avaliações → recálculo de
+  `dim_reviews`.
 
-| Método | Rota | Sucesso | Erros |
-|---|---|---|---|
-| GET | `/api/v1/movies/{sk_movie_id}/reviews` | 200 `{items, total, page, page_size}` | 404, 422 |
-| POST | `/api/v1/movies/{sk_movie_id}/reviews` | 201 com a avaliação | 404, 422 |
-| DELETE | `/api/v1/reviews/{sk_movie_review_id}` | 204 | 404, 422 |
+Resultado: a carga completa leva cerca de 3 minutos.
 
-Decisões das avaliações:
+### Outras decisões
 
-- **Escala 0–10, não 1–5.** O enunciado fala em notas de 1 a 5, mas os dados
-  (`movies_reviews.csv`) e a CHECK do banco usam 0–10. A API mantém 0–10 e o
-  frontend exibe 5 estrelas com meia estrela: `nota = estrelas × 2`. Por isso o POST
-  só aceita múltiplos de 0.5 (`7.3` → 422); notas antigas do CSV (ex.: 9.8) continuam
-  válidas na leitura.
-- POST aceita apenas `nome` (1–120), `nota` (número de 0 a 10) e `comentario`
-  (1–4000). Textos são aparados antes de validar; só espaços → 422. `nota` precisa ser
-  número JSON: `true` ou `"7.5"` → 422. Campos extras → 422.
-- Criar ou remover avaliação recalcula `dim_reviews` na mesma transação:
-  `qtd_avaliacoes_usuarios = COUNT` e `nota_media_usuarios = ROUND(AVG, 2)`. Sem
-  avaliações restantes, fica `qtd = 0` e `média = null`. O seed usa o mesmo
-  arredondamento.
-- GET lista da mais recente para a mais antiga; avaliações com o mesmo `created_at`
-  (resolução de segundos) saem pela ordem de inserção, a mais nova primeiro.
-- `created_at` é gerado pelo banco em UTC e retornado com fuso
-  (`2026-09-25T16:53:25Z`).
-
-## Banco de dados e migrações
-
-O modelo usa um esquema estrela para o catálogo de filmes:
-
-- dimensões de filmes, gêneros, pessoas, produtoras e resumo de avaliações;
-- fato de desempenho financeiro e de engajamento;
-- tabelas de associação N:N entre filmes, gêneros, produtoras e pessoas;
-
-O schema corresponde aos nove arquivos CSV atuais da camada Diamond, com a
-adição de `movie_reviews`: uma avaliação individual por linha, na escala 0–10.
-A tabela aceita diretamente as colunas `sk_movie_review_id`, `sk_movie_id`,
-`nome`, `nota` e `comentario` do CSV enviado separadamente. `created_at` é
-gerado pelo banco. O contexto generativo não faz parte desta base.
-
-O repositório não inclui CSVs nem rotinas de carga. Para usar avaliações,
-importe primeiro os filmes em `dim_movies` e depois o CSV de `movie_reviews`.
-
-As tabelas são criadas exclusivamente pelo Alembic. Para evoluir os modelos,
-crie uma revisão e aplique-a:
-
-```bash
-cd backend
-.venv/bin/alembic revision --autogenerate -m "descreva a alteração"
-.venv/bin/alembic upgrade head
-```
-
-O banco padrão é SQLite local em `backend/rocketlab.db`. Ajuste
-`DATABASE_URL` no arquivo `.env` para usar outro banco compatível.
+- **Paginação no servidor** com resposta `{items, total, page, page_size}`, em vez de
+  devolver 95 mil filmes de uma vez.
+- **`duracao_minutos = 0`** significa duração desconhecida (é o que os dados usam) e
+  aparece como "—".
+- **Filmes sem pôster** (~8 mil) ou com imagem quebrada mostram um pôster genérico.
+- **Remoção em cascata** (`ON DELETE CASCADE`): remover um filme apaga avaliações,
+  resumo, métricas e vínculos, mas mantém pessoas, gêneros e produtoras, que podem
+  estar em outros filmes.
+- **Escritas concorrentes** que violariam unicidade (dois cadastros simultâneos
+  criando o mesmo gênero novo, por exemplo) são barradas pelo banco e devolvem **409**
+  em vez de erro 500.
+- **Sem biblioteca de UI**: tema escuro em variáveis CSS e CSS Modules. As cores foram
+  checadas quanto a contraste (texto ≥ 4,5:1, contornos de campos ≥ 3:1).

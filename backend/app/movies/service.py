@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.movies import repository
 from app.movies.models import DimMovie, DimReview, PersonType, generate_surrogate_key
 from app.movies.schemas import (
+    Creditos,
     MovieCreate,
     MovieDetail,
     MovieFilters,
@@ -15,6 +16,7 @@ from app.movies.schemas import (
     MovieUpdate,
     Page,
     PerformanceOut,
+    PessoaRef,
     ReviewSummaryOut,
     check_year_matches_date,
 )
@@ -63,11 +65,21 @@ def _review_summary(summary: DimReview | None) -> ReviewSummaryOut:
     )
 
 
-def _people_names(movie: DimMovie, tipo: PersonType) -> list[str]:
-    return sorted(p.nome_pessoa for p in movie.people if p.tipo_pessoa == tipo)
+def _people_refs(movie: DimMovie, tipo: PersonType, limit: int | None = None) -> list[PessoaRef]:
+    pessoas = sorted(
+        (p for p in movie.people if p.tipo_pessoa == tipo),
+        key=lambda p: (p.nome_pessoa, p.sk_person_id),
+    )
+    return [PessoaRef(sk_person_id=p.sk_person_id, nome=p.nome_pessoa) for p in pessoas[:limit]]
 
 
-def _to_list_item(movie: DimMovie) -> MovieListItem:
+def _names(refs: list[PessoaRef]) -> list[str]:
+    return [ref.nome for ref in refs]
+
+
+def to_list_item(movie: DimMovie) -> MovieListItem:
+    """Card de filme; exige gêneros e resumo de avaliações já carregados."""
+
     summary = _review_summary(movie.reviews_summary)
     return MovieListItem(
         sk_movie_id=movie.sk_movie_id,
@@ -82,6 +94,11 @@ def _to_list_item(movie: DimMovie) -> MovieListItem:
 
 def _to_detail(movie: DimMovie) -> MovieDetail:
     performance = movie.performance
+    creditos = Creditos(
+        diretores=_people_refs(movie, "Diretor"),
+        atores=_people_refs(movie, "Ator", limit=MAX_ATORES_DETALHE),
+        roteiristas=_people_refs(movie, "Roteirista"),
+    )
     return MovieDetail(
         sk_movie_id=movie.sk_movie_id,
         id_filme=movie.id_filme,
@@ -94,10 +111,11 @@ def _to_detail(movie: DimMovie) -> MovieDetail:
         url_poster=movie.url_poster,
         url_backdrop=movie.url_backdrop,
         generos=[genre.nome_genero for genre in movie.genres],
-        diretores=_people_names(movie, "Diretor"),
-        atores=_people_names(movie, "Ator")[:MAX_ATORES_DETALHE],
-        roteiristas=_people_names(movie, "Roteirista"),
+        diretores=_names(creditos.diretores),
+        atores=_names(creditos.atores),
+        roteiristas=_names(creditos.roteiristas),
         produtoras=[company.nome_produtora for company in movie.companies],
+        creditos=creditos,
         performance=PerformanceOut.model_validate(performance) if performance else None,
         avaliacoes=_review_summary(movie.reviews_summary),
     )
@@ -110,7 +128,7 @@ async def list_movies(
         session, filters, offset=(page - 1) * page_size, limit=page_size
     )
     return Page[MovieListItem](
-        items=[_to_list_item(movie) for movie in movies],
+        items=[to_list_item(movie) for movie in movies],
         total=total,
         page=page,
         page_size=page_size,

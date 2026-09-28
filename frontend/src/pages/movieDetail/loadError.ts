@@ -1,12 +1,11 @@
-import { ApiError } from '../../api/client'
+import { type LoadErrorTexts, loadErrorTitle } from '../../components/LoadError/loadErrorTexts'
 
-const NOT_FOUND_STATUS = 404
+export const MOVIE_LOAD_ERROR_TEXTS: LoadErrorTexts = {
+  notFound: 'Filme não encontrado',
+  failed: 'Não foi possível carregar o filme',
+}
 
 /** Título da mensagem (e da aba) quando o filme não pôde ser carregado. */
 export function movieLoadErrorTitle(error: Error): string {
-  return isMovieNotFound(error) ? 'Filme não encontrado' : 'Não foi possível carregar o filme'
-}
-
-export function isMovieNotFound(error: Error): boolean {
-  return error instanceof ApiError && error.status === NOT_FOUND_STATUS
+  return loadErrorTitle(error, MOVIE_LOAD_ERROR_TEXTS)
 }

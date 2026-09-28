@@ -87,6 +87,7 @@ async def test_create_with_all_fields(client: httpx.AsyncClient) -> None:
     assert body["status_filme"] == "Lançado"
     assert body["url_poster"] == POSTER_URL
     assert body["diretores"] == ["Diretor Novo"]
+    assert [p["nome"] for p in body["creditos"]["diretores"]] == ["Diretor Novo"]
     assert body["generos"] == ["Ficção"]
 
 

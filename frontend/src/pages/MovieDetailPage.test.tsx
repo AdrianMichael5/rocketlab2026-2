@@ -168,6 +168,56 @@ describe('MovieDetailPage — informações', () => {
     ])
   })
 
+  it('liga diretores, roteiristas e elenco à página de cada pessoa', async () => {
+    stubApi({
+      movie: movieHandler(
+        movieDetail({
+          creditos: {
+            diretores: [
+              { sk_person_id: 'd1', nome: 'Lana Wachowski' },
+              { sk_person_id: 'd2', nome: 'Lilly Wachowski' },
+            ],
+            roteiristas: [{ sk_person_id: 'r1', nome: 'Dan O’Bannon' }],
+            atores: [{ sk_person_id: 'a/1', nome: 'Sigourney Weaver' }],
+          },
+        }),
+      ),
+    })
+    renderRoute(PATH)
+
+    await findTitle()
+    expect(fact('Direção')).toBe('Lana Wachowski, Lilly Wachowski')
+    expect(screen.getByRole('link', { name: 'Lana Wachowski' })).toHaveAttribute(
+      'href',
+      '/pessoas/d1',
+    )
+    expect(screen.getByRole('link', { name: 'Lilly Wachowski' })).toHaveAttribute(
+      'href',
+      '/pessoas/d2',
+    )
+    expect(screen.getByRole('link', { name: 'Dan O’Bannon' })).toHaveAttribute(
+      'href',
+      '/pessoas/r1',
+    )
+    const cast = screen.getByRole('list', { name: 'Elenco' })
+    // O id vai codificado na URL.
+    expect(within(cast).getByRole('link', { name: 'Sigourney Weaver' })).toHaveAttribute(
+      'href',
+      '/pessoas/a%2F1',
+    )
+  })
+
+  it('navega do elenco para a página da pessoa', async () => {
+    stubApi({ movie: movieHandler(movieDetail()), person: pending })
+    const { pathname } = renderRoute(PATH)
+
+    await findTitle()
+    await userEvent.click(screen.getByRole('link', { name: 'Sigourney Weaver' }))
+
+    expect(pathname()).toBe('/pessoas/a-1')
+    expect(screen.getByRole('status', { name: 'Carregando filmografia' })).toBeInTheDocument()
+  })
+
   it('omite sinopse e elenco quando não existem', async () => {
     stubApi({ movie: movieHandler(movieDetail({ sinopse: null, atores: [] })) })
     renderRoute(PATH)

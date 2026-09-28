@@ -1,5 +1,13 @@
 import { vi } from 'vitest'
-import type { MovieDetail, MovieListItem, Page, ReviewOut, StatsOut } from '../api/types'
+import type {
+  MovieDetail,
+  MovieListItem,
+  Page,
+  PersonDetail,
+  PessoaRef,
+  ReviewOut,
+  StatsOut,
+} from '../api/types'
 
 export interface MockRequest {
   url: URL
@@ -49,8 +57,14 @@ export function movie(overrides: Partial<MovieListItem> = {}): MovieListItem {
   }
 }
 
+/** Referências com ids previsíveis ("<prefixo>-<posição>") para os nomes dados. */
+function refs(prefix: string, nomes: string[]): PessoaRef[] {
+  return nomes.map((nome, index) => ({ sk_person_id: `${prefix}-${index + 1}`, nome }))
+}
+
+/** `creditos` acompanha os nomes de diretores/atores/roteiristas, salvo se sobrescrito. */
 export function movieDetail(overrides: Partial<MovieDetail> = {}): MovieDetail {
-  return {
+  const base: Omit<MovieDetail, 'creditos'> = {
     sk_movie_id: 'm1',
     id_filme: '348',
     titulo: 'Alien',
@@ -68,6 +82,24 @@ export function movieDetail(overrides: Partial<MovieDetail> = {}): MovieDetail {
     produtoras: ['Brandywine Productions'],
     performance: null,
     avaliacoes: { nota_media: 7.8, qtd_avaliacoes: 5 },
+    ...overrides,
+  }
+  return {
+    ...base,
+    creditos: overrides.creditos ?? {
+      diretores: refs('d', base.diretores),
+      atores: refs('a', base.atores),
+      roteiristas: refs('r', base.roteiristas),
+    },
+  }
+}
+
+export function personDetail(overrides: Partial<PersonDetail> = {}): PersonDetail {
+  return {
+    sk_person_id: 'p1',
+    nome: 'Ridley Scott',
+    tipo: 'Diretor',
+    filmes: page([movie()], { page_size: 24 }),
     ...overrides,
   }
 }
@@ -132,10 +164,13 @@ interface ApiHandlers {
   reviews?: Handler
   /** GET /stats (página de insights). */
   stats?: Handler
+  /** GET /people/{id} (página da pessoa). */
+  person?: Handler
 }
 
 const MOVIE_PATH = /\/movies\/[^/]+$/
 const REVIEWS_PATH = /\/movies\/[^/]+\/reviews$/
+const PERSON_PATH = /\/people\/[^/]+$/
 
 function route(url: URL, handlers: Required<ApiHandlers>): Handler | null {
   const { pathname } = url
@@ -144,6 +179,7 @@ function route(url: URL, handlers: Required<ApiHandlers>): Handler | null {
   if (pathname.endsWith('/stats')) return handlers.stats
   if (REVIEWS_PATH.test(pathname)) return handlers.reviews
   if (MOVIE_PATH.test(pathname)) return handlers.movie
+  if (PERSON_PATH.test(pathname)) return handlers.person
   return null
 }
 
@@ -157,6 +193,7 @@ export function stubApi({
   movie = () => notFound('Filme não encontrado'),
   reviews = () => jsonResponse(page([])),
   stats: statsHandler = () => jsonResponse(stats()),
+  person = () => notFound('Pessoa não encontrada'),
 }: ApiHandlers = {}) {
   const requests: MockRequest[] = []
   const fetchMock = vi.fn((input: string, init: RequestInit = {}) => {
@@ -166,7 +203,14 @@ export function stubApi({
       body: typeof init.body === 'string' ? JSON.parse(init.body) : undefined,
     }
     requests.push(request)
-    const handler = route(request.url, { movies, genres, movie, reviews, stats: statsHandler })
+    const handler = route(request.url, {
+      movies,
+      genres,
+      movie,
+      reviews,
+      stats: statsHandler,
+      person,
+    })
     return Promise.resolve(handler ? handler(request.url, request) : notFound())
   })
   vi.stubGlobal('fetch', fetchMock)

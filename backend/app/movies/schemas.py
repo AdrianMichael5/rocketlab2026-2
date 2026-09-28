@@ -212,6 +212,19 @@ class ReviewSummaryOut(BaseModel):
     qtd_avaliacoes: int
 
 
+class PessoaRef(BaseModel):
+    """Pessoa citada no detalhe do filme, com a chave para navegar até ela."""
+
+    sk_person_id: str
+    nome: str
+
+
+class Creditos(BaseModel):
+    diretores: list[PessoaRef]
+    atores: list[PessoaRef]
+    roteiristas: list[PessoaRef]
+
+
 class MovieDetail(BaseModel):
     sk_movie_id: str
     id_filme: str
@@ -228,5 +241,7 @@ class MovieDetail(BaseModel):
     atores: list[str]
     roteiristas: list[str]
     produtoras: list[str]
+    # Mesmas pessoas das listas de nomes acima, com sk_person_id (links no frontend).
+    creditos: Creditos
     performance: PerformanceOut | None
     avaliacoes: ReviewSummaryOut

@@ -276,6 +276,19 @@ async def test_detail_limits_actors_to_ten(client: httpx.AsyncClient) -> None:
     assert body["atores"] == [f"Ator {i:02d}" for i in range(1, 11)]
 
 
+async def test_detail_returns_credits_with_person_ids(client: httpx.AsyncClient) -> None:
+    creditos = (await client.get(f"{MOVIES_URL}/m1")).json()["creditos"]
+
+    assert creditos["diretores"] == [
+        {"sk_person_id": "d2", "nome": "Co Diretor"},
+        {"sk_person_id": "d1", "nome": "Francis Coppola"},
+    ]
+    assert creditos["roteiristas"] == [{"sk_person_id": "r1", "nome": "Mario Puzo"}]
+    assert creditos["atores"] == [
+        {"sk_person_id": f"a{i:02d}", "nome": f"Ator {i:02d}"} for i in range(1, 11)
+    ]
+
+
 async def test_detail_returns_performance_as_numbers(client: httpx.AsyncClient) -> None:
     performance = (await client.get(f"{MOVIES_URL}/m1")).json()["performance"]
 
@@ -301,6 +314,7 @@ async def test_detail_of_bare_movie_has_empty_relations(client: httpx.AsyncClien
     assert body["atores"] == []
     assert body["roteiristas"] == []
     assert body["produtoras"] == []
+    assert body["creditos"] == {"diretores": [], "atores": [], "roteiristas": []}
     assert body["performance"] is None
     assert body["avaliacoes"] == {"nota_media": None, "qtd_avaliacoes": 0}
 

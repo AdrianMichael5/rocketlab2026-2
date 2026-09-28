@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { type FormEvent, useId, useState } from 'react'
 import { splitFieldErrors } from '../../api/fieldErrors'
-import { movieKeys } from '../../api/queryKeys'
+import { movieKeys, personKeys } from '../../api/queryKeys'
 import { createReview } from '../../api/reviews'
 import type { ReviewCreate } from '../../api/types'
 import { NotaInput } from '../../components/Rating/NotaInput'
@@ -54,6 +54,8 @@ export function ReviewForm({ skMovieId, onCreated }: ReviewFormProps) {
       // ['movie', id] cobre o detalhe (média) e as páginas de avaliações.
       void queryClient.invalidateQueries({ queryKey: movieKeys.detail(skMovieId) })
       void queryClient.invalidateQueries({ queryKey: movieKeys.lists() })
+      // Os cards da página da pessoa também mostram a média.
+      void queryClient.invalidateQueries({ queryKey: personKeys.all() })
     },
     onError: (error) => setErrors(splitFieldErrors(error, CAMPOS).fields),
   })

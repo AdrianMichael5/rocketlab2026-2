@@ -11,7 +11,11 @@ cadastro e avaliações. O usuário é o administrador do catálogo (não há lo
   filtros por gênero e ano e ordenação por título, ano ou nota. O estado da busca fica
   na URL, então dá para compartilhar o link ou usar o botão Voltar do navegador.
 - **Detalhe do filme**: sinopse, elenco, ficha técnica (direção, gêneros, duração,
-  roteiro, produtoras), bilheteria e notas externas (TMDB/IMDb).
+  roteiro, produtoras), bilheteria e notas externas (TMDB/IMDb). Diretores, roteiristas
+  e atores são links para a página da pessoa.
+- **Página da pessoa** (`/pessoas/:id`): nome, papel (direção, atuação ou roteiro) e os
+  filmes dela do mais recente ao mais antigo, paginados, com pôster e média. Como
+  `dim_people` é única por nome + papel, quem dirige e atua aparece em duas páginas.
 - **Avaliações**: nome, nota de 0 a 10 e comentário. A média e a quantidade de
   avaliações são atualizadas na hora, no detalhe e no catálogo.
 - **Cadastro, edição e remoção de filmes**, com diretores e gêneros como etiquetas.
@@ -301,13 +305,14 @@ Todas as rotas ficam sob `/api/v1`. A documentação completa, com os schemas, e
 | Método | Rota | Descrição | Respostas |
 |---|---|---|---|
 | GET | `/movies` | Lista paginada. Parâmetros: `q` (trecho do título), `genero`, `ano`, `ordem` (`titulo` \| `ano` \| `nota`), `page`, `page_size` (padrão 20, máx. 100) | 200, 422 |
-| GET | `/movies/{sk_movie_id}` | Detalhe: dados, diretores, gêneros, elenco, bilheteria, média | 200, 404 |
+| GET | `/movies/{sk_movie_id}` | Detalhe: dados, diretores, gêneros, elenco, bilheteria, média. `creditos` repete diretores, atores e roteiristas com o `sk_person_id` | 200, 404 |
 | POST | `/movies` | Cadastra filme (`titulo` obrigatório; `diretores` e `generos` como listas) | 201, 409, 422 |
 | PATCH | `/movies/{sk_movie_id}` | Atualiza só os campos enviados | 200, 404, 409, 422 |
 | DELETE | `/movies/{sk_movie_id}` | Remove o filme com avaliações, métricas e vínculos | 204, 404 |
 | GET | `/movies/{sk_movie_id}/reviews` | Avaliações paginadas, mais recentes primeiro | 200, 404 |
 | POST | `/movies/{sk_movie_id}/reviews` | Cria avaliação (`nome`, `nota`, `comentario`) e recalcula a média | 201, 404, 422 |
 | DELETE | `/reviews/{sk_movie_review_id}` | Remove avaliação e recalcula a média | 204, 404 |
+| GET | `/people/{sk_person_id}` | Pessoa (`nome`, `tipo`) e `filmes` paginados (`page`, `page_size`), do mais recente ao mais antigo, sem ano por último | 200, 404, 422 |
 | GET | `/genres` | Gêneros que têm filmes (para o filtro do catálogo) | 200 |
 | GET | `/stats` | Números gerais, rankings e médias por gênero e ano (página de insights) | 200 |
 | GET | `/health` | Saúde da aplicação (fora de `/api/v1`) | 200 |
@@ -341,6 +346,7 @@ POST /api/v1/movies
 │   │   ├── movies/         # domínio de filmes: models, schemas, repository, service, router
 │   │   ├── reviews/        # domínio de avaliações (mesma divisão em camadas)
 │   │   ├── genres/         # listagem de gêneros
+│   │   ├── people/         # página da pessoa (GET /people/{id}) com a filmografia
 │   │   ├── stats/          # agregações da página de insights (GET /stats)
 │   │   └── main.py         # criação da aplicação FastAPI
 │   ├── migrations/         # ambiente e revisões do Alembic

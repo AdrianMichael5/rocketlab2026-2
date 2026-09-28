@@ -8,6 +8,7 @@ import { MovieDetailPage } from './pages/MovieDetailPage'
 import { MoviesPage } from './pages/MoviesPage'
 import { NewMoviePage } from './pages/NewMoviePage'
 import { NotFoundPage } from './pages/NotFoundPage'
+import { PersonPage } from './pages/PersonPage'
 
 // Carregada sob demanda: o Recharts só entra no bundle de quem abre os insights.
 const InsightsPage = lazy(() =>
@@ -24,6 +25,7 @@ export function AppRoutes() {
         {/* A rota estática "novo" tem prioridade sobre o parâmetro no React Router. */}
         <Route path="filmes/:skMovieId" element={<MovieDetailPage />} />
         <Route path="filmes/:skMovieId/editar" element={<EditMoviePage />} />
+        <Route path="pessoas/:skPersonId" element={<PersonPage />} />
         <Route
           path="insights"
           element={

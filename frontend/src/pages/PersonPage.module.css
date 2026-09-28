@@ -1,0 +1,4 @@
+/* Mesma grade (e o mesmo esmaecimento durante a troca de página) do catálogo. */
+.grid {
+  composes: grid from './MoviesPage.module.css';
+}

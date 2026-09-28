@@ -10,8 +10,21 @@ export function createTestQueryClient(): QueryClient {
   })
 }
 
+/**
+ * Como em produção, os dados em cache não são buscados de novo ao voltar a uma página
+ * (staleTime infinito deixa isso determinístico): só uma invalidação os atualiza.
+ */
+export function createCachingTestQueryClient(): QueryClient {
+  return new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, staleTime: Infinity },
+      mutations: { retry: false },
+    },
+  })
+}
+
 /** Renderiza a aplicação na rota `path` e expõe a localização atual do roteador. */
-export function renderRoute(path = '/') {
+export function renderRoute(path = '/', queryClient: QueryClient = createTestQueryClient()) {
   const current: { location: Location | null } = { location: null }
 
   function LocationSpy() {
@@ -20,7 +33,7 @@ export function renderRoute(path = '/') {
   }
 
   const view = render(
-    <QueryClientProvider client={createTestQueryClient()}>
+    <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={[path]}>
         <AppRoutes />
         <LocationSpy />

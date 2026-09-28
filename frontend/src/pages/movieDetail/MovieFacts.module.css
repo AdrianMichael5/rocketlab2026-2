@@ -39,10 +39,29 @@
 }
 
 .cast li {
-  padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-sm);
   background: var(--color-surface-raised);
   font-size: var(--font-size-sm);
+}
+
+/* No elenco, o chip inteiro é o link. */
+.cast .personLink {
+  display: block;
+  padding: var(--space-1) var(--space-2);
+  border-radius: inherit;
+  text-decoration: none;
+}
+
+.personLink {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--color-text-muted);
+  text-underline-offset: 0.2em;
+}
+
+.personLink:hover {
+  color: var(--color-accent);
+  text-decoration-color: currentColor;
 }
 
 .list {

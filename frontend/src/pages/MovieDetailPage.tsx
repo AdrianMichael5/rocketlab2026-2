@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { deleteMovie, getMovie } from '../api/movies'
-import { movieKeys } from '../api/queryKeys'
+import { movieKeys, personKeys } from '../api/queryKeys'
 import type { MovieDetail } from '../api/types'
 import { ConfirmDialog } from '../components/ConfirmDialog/ConfirmDialog'
 import { usePageTitle } from '../hooks/usePageTitle'
@@ -60,6 +60,7 @@ function MovieDetailContent({ movie }: { movie: MovieDetail }) {
       navigate('/', { replace: true })
       queryClient.removeQueries({ queryKey: movieKeys.detail(movie.sk_movie_id) })
       void queryClient.invalidateQueries({ queryKey: movieKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: personKeys.all() })
     },
   })
 

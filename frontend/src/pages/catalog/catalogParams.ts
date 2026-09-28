@@ -42,7 +42,7 @@ export function parseAno(texto: string | null): number | null {
   return ano >= MIN_ANO && ano <= MAX_ANO ? ano : null
 }
 
-function parsePage(texto: string | null): number {
+export function parsePage(texto: string | null): number {
   const valor = texto?.trim() ?? ''
   if (!INTEGER.test(valor)) {
     return DEFAULT_CATALOG_PARAMS.page

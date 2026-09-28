@@ -182,7 +182,7 @@ Geradas por `npm run screenshots` (em `frontend/`) e salvas em `docs/images/`.
 O enunciado cita, como exemplo, notas de 1 a 5 estrelas. Os dados recebidos
 (`movies_reviews.csv`) usam a escala **0 a 10**, e a tabela tem uma `CHECK` com esse
 intervalo. Trocar a escala exigiria converter as avaliações existentes e perderia
-precisão (há notas como 9,8). Por isso o sistema inteiro usa **0 a 10**:
+precisão (há notas como 9,8). Por isso o sistema inteiro usa **0 a 10**: (citado pela organização do Rocket)
 
 - **Banco e API**: o POST de avaliação aceita de 0 a 10 em múltiplos de 0,5 (`7.3` → 422).
   As notas antigas do CSV, como 9,8, continuam válidas.

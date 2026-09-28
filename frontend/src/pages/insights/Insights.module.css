@@ -1,0 +1,220 @@
+.layout {
+  display: grid;
+  gap: var(--space-6);
+}
+
+/* Uma coluna no celular; duas a partir do desktop. */
+.grid {
+  display: grid;
+  gap: var(--space-6);
+}
+
+@media (min-width: 1024px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* --- Números gerais --- */
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+}
+
+.tile {
+  display: grid;
+  gap: var(--space-1);
+  min-height: 88px;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.tileLabel {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tileValue {
+  margin: 0;
+  color: var(--color-text-strong);
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Cartões (rankings e gráficos) --- */
+
+.card {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.caption {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.cardTitle {
+  color: var(--color-text-strong);
+  font-size: var(--font-size-lg);
+}
+
+.note {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.empty {
+  color: var(--color-text-muted);
+}
+
+.chart {
+  width: 100%;
+  min-width: 0;
+}
+
+/* --- Rankings --- */
+
+.ranking {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rankingLink {
+  display: grid;
+  grid-template-columns: 1.5rem 40px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+}
+
+.rankingLink:hover {
+  background: var(--color-surface-raised);
+  color: var(--color-text-strong);
+}
+
+.position {
+  color: var(--color-text-muted);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.poster {
+  width: 40px;
+  height: 60px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  object-fit: cover;
+}
+
+.rankingText {
+  display: block;
+  min-width: 0;
+}
+
+.rankingTitle {
+  color: var(--color-text-strong);
+  font-weight: 600;
+}
+
+.rankingYear {
+  color: var(--color-text-muted);
+}
+
+.rankingValue {
+  display: block;
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Tabela de dados dos gráficos --- */
+
+.dataTable summary {
+  width: fit-content;
+  color: var(--color-accent-blue);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.table {
+  width: 100%;
+  margin-top: var(--space-3);
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.table th,
+.table td {
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  text-align: right;
+}
+
+.table th:first-child {
+  text-align: left;
+}
+
+.table thead th {
+  color: var(--color-text-muted);
+}
+
+.table tbody th {
+  color: var(--color-text-strong);
+  font-weight: 600;
+}
+
+/* --- Carregamento --- */
+
+.skeleton {
+  background: var(--color-surface);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+.skeletonCard {
+  min-height: 320px;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}

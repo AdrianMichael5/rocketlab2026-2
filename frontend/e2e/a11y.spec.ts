@@ -73,6 +73,19 @@ for (const width of WIDTHS) {
       await expectAccessibleLayout(page)
     })
 
+    test('insights com gráficos e tabela de dados aberta', async ({ api, tag, page }) => {
+      const movie = await api.createMovie({ titulo: `${tag} Insights`, ano_lancamento: 2020, generos: ['Drama'] })
+      await api.createReview(movie.sk_movie_id, { nome: 'Ana', nota: 8, comentario: 'Bom.' })
+      await page.goto('/insights')
+      const comparacao = page.getByRole('figure', { name: 'Usuários × IMDb × TMDB por gênero' })
+      await expect(comparacao.locator('.recharts-bar-rectangle').first()).toBeVisible()
+      await expectAccessibleLayout(page)
+
+      await comparacao.getByText('Ver dados em tabela').click()
+      await expect(comparacao.getByRole('table')).toBeVisible()
+      await expectAccessibleLayout(page)
+    })
+
     test('filme inexistente e rota desconhecida', async ({ detail, page }) => {
       await detail.goto('nao-existe-a11y')
       await expect(page.getByRole('heading', { level: 1, name: 'Filme não encontrado' })).toBeVisible()

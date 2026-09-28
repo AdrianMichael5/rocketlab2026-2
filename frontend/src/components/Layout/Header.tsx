@@ -12,6 +12,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { to: '/', label: 'Filmes', end: true },
+  { to: '/insights', label: 'Insights' },
   { to: '/filmes/novo', label: 'Novo filme', primary: true },
 ]
 

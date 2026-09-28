@@ -22,7 +22,7 @@ from itertools import islice
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import Table, delete, func, insert, inspect, select
+from sqlalchemy import Table, delete, func, insert, inspect, select, text
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, create_async_engine
 
 from app.core.config import get_settings
@@ -284,6 +284,8 @@ async def seed(engine: AsyncEngine, data_dir: Path = DATA_DIR) -> dict[str, int]
         for source in SOURCES:
             counts[source.table.name] = await load_source(conn, source, data_dir)
         counts[DIM_REVIEWS.name] = await rebuild_review_summary(conn)
+        # Estatísticas do planejador: sem elas o SQLite ignora índices de cobertura.
+        await conn.execute(text("ANALYZE"))
     return counts
 
 

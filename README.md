@@ -17,6 +17,9 @@ cadastro e avaliações. O usuário é o administrador do catálogo (não há lo
 - **Cadastro, edição e remoção de filmes**, com diretores e gêneros como etiquetas.
   Gêneros e pessoas já existentes são reaproveitados pelo nome. A remoção pede
   confirmação.
+- **Insights** (`/insights`): números gerais, top 10 por média dos usuários e por
+  lucro (clicáveis até o detalhe), média por gênero, filmes por ano e comparação
+  usuários × IMDb × TMDB por gênero, em gráficos com tabela de dados alternativa.
 - **Acessível e responsivo**: WCAG 2.2 AA verificado com axe em 320px, 768px e 1280px,
   uso completo pelo teclado e títulos de aba por página.
 
@@ -306,6 +309,7 @@ Todas as rotas ficam sob `/api/v1`. A documentação completa, com os schemas, e
 | POST | `/movies/{sk_movie_id}/reviews` | Cria avaliação (`nome`, `nota`, `comentario`) e recalcula a média | 201, 404, 422 |
 | DELETE | `/reviews/{sk_movie_review_id}` | Remove avaliação e recalcula a média | 204, 404 |
 | GET | `/genres` | Gêneros que têm filmes (para o filtro do catálogo) | 200 |
+| GET | `/stats` | Números gerais, rankings e médias por gênero e ano (página de insights) | 200 |
 | GET | `/health` | Saúde da aplicação (fora de `/api/v1`) | 200 |
 
 Listagens paginadas devolvem sempre `{ "items": [...], "total", "page", "page_size" }`.
@@ -337,6 +341,7 @@ POST /api/v1/movies
 │   │   ├── movies/         # domínio de filmes: models, schemas, repository, service, router
 │   │   ├── reviews/        # domínio de avaliações (mesma divisão em camadas)
 │   │   ├── genres/         # listagem de gêneros
+│   │   ├── stats/          # agregações da página de insights (GET /stats)
 │   │   └── main.py         # criação da aplicação FastAPI
 │   ├── migrations/         # ambiente e revisões do Alembic
 │   ├── scripts/seed.py     # carga dos CSVs
@@ -428,6 +433,29 @@ memória. O seed usa então:
   `dim_reviews`.
 
 Resultado: a carga completa leva cerca de 3 minutos.
+
+### Insights: agregações no SQL e regras sobre os dados
+
+`GET /stats` faz todas as contas no banco (`COUNT`, `AVG`, `SUM`, `GROUP BY`,
+`ORDER BY … LIMIT 10`); o Python só monta a resposta. Os dados pediram algumas regras:
+
+- **Top 10 por lucro só entre filmes com orçamento e receita informados.** Sem um
+  deles, o `lucro_usd` do CSV é a própria receita (ou −orçamento), o que colocaria no
+  ranking filmes cujo custo é desconhecido.
+- **Notas IMDb/TMDB iguais a 0 ficam fora das médias** (`NULLIF`): no CSV, 0 significa
+  "sem votos" (36 mil filmes no TMDB).
+- **A comparação usuários × IMDb × TMDB usa só filmes com avaliação de usuário**, para
+  as três médias falarem do mesmo conjunto. A média dos usuários é ponderada por
+  avaliação (soma das notas / quantidade).
+- **Top 10 por média** exige 3 ou mais avaliações; empates vão para quem tem mais
+  avaliações e depois para o título.
+- **Desempenho:** a migração `0003` cria índices de cobertura em
+  `movie_reviews(sk_movie_id, nota)` e `fact_movies_performance(sk_movie_id, nota_imdb,
+  nota_tmdb)` e roda `ANALYZE` (o seed também roda); sem as estatísticas o SQLite
+  ignora esses índices. Com a base completa, o endpoint caiu de ~1 s para ~0,3 s.
+- **Gráficos com Recharts**, carregados só na rota `/insights` (chunk separado). As
+  cores das séries são os matizes do tema escurecidos e validados para daltonismo; cada
+  gráfico tem a tabela de dados equivalente.
 
 ### Outras decisões
 

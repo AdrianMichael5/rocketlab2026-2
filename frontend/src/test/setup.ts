@@ -16,6 +16,13 @@ HTMLDialogElement.prototype.close = function close(this: HTMLDialogElement) {
   }
 }
 
+// jsdom não implementa ResizeObserver, exigido pelo ResponsiveContainer do Recharts.
+globalThis.ResizeObserver ??= class ResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
 afterEach(() => {
   cleanup()
 })

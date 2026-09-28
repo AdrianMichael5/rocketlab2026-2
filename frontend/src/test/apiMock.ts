@@ -1,5 +1,5 @@
 import { vi } from 'vitest'
-import type { MovieDetail, MovieListItem, Page, ReviewOut } from '../api/types'
+import type { MovieDetail, MovieListItem, Page, ReviewOut, StatsOut } from '../api/types'
 
 export interface MockRequest {
   url: URL
@@ -84,6 +84,44 @@ export function review(overrides: Partial<ReviewOut> = {}): ReviewOut {
   }
 }
 
+/** Resposta de GET /stats com um item em cada bloco. */
+export function stats(overrides: Partial<StatsOut> = {}): StatsOut {
+  return {
+    resumo: { total_filmes: 95645, total_avaliacoes: 43667, media_geral: 5 },
+    top_avaliados: [
+      {
+        sk_movie_id: 'm1',
+        titulo: 'Alien',
+        ano_lancamento: 1979,
+        url_poster: 'https://image.tmdb.org/t/p/w500/alien.jpg',
+        nota_media: 9.18,
+        qtd_avaliacoes: 4,
+      },
+    ],
+    top_lucro: [
+      {
+        sk_movie_id: 'm2',
+        titulo: 'Avengers: Endgame',
+        ano_lancamento: 2019,
+        url_poster: null,
+        lucro_usd: 2_444_000_000,
+      },
+    ],
+    generos: [
+      {
+        genero: 'Drama',
+        qtd_filmes_avaliados: 2,
+        qtd_avaliacoes: 4,
+        media_usuarios: 9,
+        media_imdb: 7,
+        media_tmdb: null,
+      },
+    ],
+    filmes_por_ano: [{ ano: 2019, qtd_filmes: 13349 }],
+    ...overrides,
+  }
+}
+
 interface ApiHandlers {
   /** GET /movies (catálogo). */
   movies?: Handler
@@ -92,6 +130,8 @@ interface ApiHandlers {
   movie?: Handler
   /** GET e POST /movies/{id}/reviews. */
   reviews?: Handler
+  /** GET /stats (página de insights). */
+  stats?: Handler
 }
 
 const MOVIE_PATH = /\/movies\/[^/]+$/
@@ -101,6 +141,7 @@ function route(url: URL, handlers: Required<ApiHandlers>): Handler | null {
   const { pathname } = url
   if (pathname.endsWith('/movies')) return handlers.movies
   if (pathname.endsWith('/genres')) return handlers.genres
+  if (pathname.endsWith('/stats')) return handlers.stats
   if (REVIEWS_PATH.test(pathname)) return handlers.reviews
   if (MOVIE_PATH.test(pathname)) return handlers.movie
   return null
@@ -115,6 +156,7 @@ export function stubApi({
   genres = () => jsonResponse([]),
   movie = () => notFound('Filme não encontrado'),
   reviews = () => jsonResponse(page([])),
+  stats: statsHandler = () => jsonResponse(stats()),
 }: ApiHandlers = {}) {
   const requests: MockRequest[] = []
   const fetchMock = vi.fn((input: string, init: RequestInit = {}) => {
@@ -124,7 +166,7 @@ export function stubApi({
       body: typeof init.body === 'string' ? JSON.parse(init.body) : undefined,
     }
     requests.push(request)
-    const handler = route(request.url, { movies, genres, movie, reviews })
+    const handler = route(request.url, { movies, genres, movie, reviews, stats: statsHandler })
     return Promise.resolve(handler ? handler(request.url, request) : notFound())
   })
   vi.stubGlobal('fetch', fetchMock)

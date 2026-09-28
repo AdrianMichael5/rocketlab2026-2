@@ -199,6 +199,10 @@ class FactMoviePerformance(Base):
     """Métricas financeiras e de engajamento; uma ocorrência por filme."""
 
     __tablename__ = "fact_movies_performance"
+    __table_args__ = (
+        # Médias IMDb/TMDB por gênero leem só o índice, sem saltar para a linha.
+        Index("ix_fact_movies_performance_notas", "sk_movie_id", "nota_imdb", "nota_tmdb"),
+    )
 
     sk_movie_id: Mapped[str] = mapped_column(
         String(64), ForeignKey("dim_movies.sk_movie_id", ondelete="CASCADE"), primary_key=True
@@ -222,7 +226,11 @@ class MovieReview(Base):
     """Avaliação individual de um filme na escala de 0 a 10."""
 
     __tablename__ = "movie_reviews"
-    __table_args__ = (CheckConstraint("nota >= 0 AND nota <= 10", name="nota_range"),)
+    __table_args__ = (
+        CheckConstraint("nota >= 0 AND nota <= 10", name="nota_range"),
+        # Cobre a FK e as agregações por filme (SUM/COUNT de nota) sem ler a linha.
+        Index("ix_movie_reviews_sk_movie_id_nota", "sk_movie_id", "nota"),
+    )
     # created_at (server_default) volta no próprio INSERT via RETURNING, sem novo SELECT.
     __mapper_args__ = {"eager_defaults": True}
 
@@ -230,7 +238,7 @@ class MovieReview(Base):
         String(64), primary_key=True, default=generate_surrogate_key
     )
     sk_movie_id: Mapped[str] = mapped_column(
-        String(64), ForeignKey("dim_movies.sk_movie_id", ondelete="CASCADE"), index=True
+        String(64), ForeignKey("dim_movies.sk_movie_id", ondelete="CASCADE")
     )
     nome: Mapped[str] = mapped_column(String(120))
     nota: Mapped[float] = mapped_column(Double)

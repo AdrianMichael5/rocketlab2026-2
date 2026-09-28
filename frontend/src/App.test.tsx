@@ -1,9 +1,15 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { App } from './App'
 import { jsonResponse, movieDetail, stubApi } from './test/apiMock'
 import { renderRoute } from './test/renderWithProviders'
+
+// A rota /insights é lazy: carrega o módulo (e o Recharts) antes dos testes, para o
+// primeiro findBy não depender do tempo de import.
+beforeAll(async () => {
+  await import('./pages/InsightsPage')
+}, 30_000)
 
 const renderAt = renderRoute
 
@@ -47,6 +53,18 @@ describe('layout e rotas', () => {
 
     const main = screen.getByRole('main')
     expect(within(main).getByRole('heading', { level: 1, name: 'Filmes' })).toBeInTheDocument()
+  })
+
+  it('tem o link Insights no cabeçalho, ativo na página de insights', async () => {
+    renderAt('/insights')
+
+    const nav = screen.getByRole('navigation', { name: 'Principal' })
+    const link = within(nav).getByRole('link', { name: 'Insights' })
+    expect(link).toHaveAttribute('href', '/insights')
+    expect(link).toHaveAttribute('aria-current', 'page')
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Insights' }),
+    ).toBeInTheDocument()
   })
 
   it('marca como ativo só o link da página atual', () => {

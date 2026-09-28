@@ -26,6 +26,11 @@ function moneyFormat(currency: 'USD' | 'BRL'): Intl.NumberFormat {
 const usdFormat = moneyFormat('USD')
 const brlFormat = moneyFormat('BRL')
 
+/** Dólares abreviados: "US$ 2,4 bi", "US$ 950 mi". */
+export function formatUsd(valor: number): string {
+  return usdFormat.format(valor)
+}
+
 /** Duração em "2h 22min"; 0 ou null (desconhecida) viram "—". */
 export function formatDuration(minutos: number | null): string {
   if (!minutos) {

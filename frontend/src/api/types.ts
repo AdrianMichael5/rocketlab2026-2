@@ -125,3 +125,51 @@ export type ReviewPageParams = {
   page?: number
   page_size?: number
 }
+
+// --- GET /stats (backend/app/stats/schemas.py) ---
+
+export interface StatsResumo {
+  total_filmes: number
+  total_avaliacoes: number
+  /** Média 0–10 de todas as avaliações (1 casa) ou null sem avaliações. */
+  media_geral: number | null
+}
+
+export interface RankedMovie {
+  sk_movie_id: string
+  titulo: string
+  ano_lancamento: number | null
+  url_poster: string | null
+}
+
+export interface TopAvaliado extends RankedMovie {
+  nota_media: number
+  qtd_avaliacoes: number
+}
+
+export interface TopLucro extends RankedMovie {
+  lucro_usd: number
+}
+
+/** Médias 0–10 por gênero, só sobre filmes com avaliação de usuário. */
+export interface GeneroStats {
+  genero: string
+  qtd_filmes_avaliados: number
+  qtd_avaliacoes: number
+  media_usuarios: number
+  media_imdb: number | null
+  media_tmdb: number | null
+}
+
+export interface AnoStats {
+  ano: number
+  qtd_filmes: number
+}
+
+export interface StatsOut {
+  resumo: StatsResumo
+  top_avaliados: TopAvaliado[]
+  top_lucro: TopLucro[]
+  generos: GeneroStats[]
+  filmes_por_ano: AnoStats[]
+}

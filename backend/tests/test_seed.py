@@ -5,7 +5,7 @@ from decimal import Decimal
 from pathlib import Path
 
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from app.db.base import Base
@@ -233,6 +233,16 @@ async def test_seed_logs_progress_per_table(
     assert "  dim_people: 1 linhas..." in caplog.messages
     assert any(message.startswith("dim_people: 2 linhas em") for message in caplog.messages)
     assert "dim_reviews: 1 linhas recalculadas a partir de movie_reviews" in caplog.messages
+
+
+async def test_seed_refreshes_planner_statistics(engine: AsyncEngine, data_dir: Path) -> None:
+    await seed(engine, data_dir)
+
+    # Sem ANALYZE o SQLite ignora os índices de cobertura usados pelas estatísticas.
+    async with engine.connect() as conn:
+        analyzed = set((await conn.execute(text("SELECT tbl FROM sqlite_stat1"))).scalars())
+
+    assert {"movie_reviews", "fact_movies_performance"} <= analyzed
 
 
 async def test_seed_twice_is_idempotent(engine: AsyncEngine, data_dir: Path) -> None:

@@ -15,3 +15,7 @@ export const movieKeys = {
 export const genreKeys = {
   all: () => ['genres'] as const,
 }
+
+export const statsKeys = {
+  all: () => ['stats'] as const,
+}

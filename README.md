@@ -174,6 +174,38 @@ Acesse <http://localhost:5173>. Essa origem já está liberada no CORS do backen
 
 Para gerar a versão de produção: `npm run build` (sai em `frontend/dist/`).
 
+### Storybook
+
+Catálogo visual dos componentes, isolados do resto do app. As stories usam dados
+mockados e **não chamam a API**: não é preciso subir o backend.
+
+```bash
+cd frontend
+npm run storybook        # http://localhost:6006, recarrega ao editar
+npm run build-storybook  # versão estática em frontend/storybook-static/
+```
+
+| Story | Estados |
+|---|---|
+| Components/Rating/Exibição | notas 0, 5,5 e 10; média do filme ("10,0/10"); tamanhos `sm`, `md`, `lg` |
+| Components/Rating/Entrada | sem nota, nota escolhida, com erro, desabilitado |
+| Components/MovieCard | com e sem pôster, sem avaliações, título longo |
+| Components/Pagination | primeira, do meio e última página |
+| Pages/MovieForm | vazio, preenchido e com erros de validação |
+
+- A nota é texto de 0 a 10, sem estrelas (ver "Nota de 0 a 10 em todo o sistema"):
+  as stories de nota cobrem a exibição (`Rating`) e a entrada (`NotaInput`).
+- O CSS global do app (`src/styles/theme.css`) é aplicado em todas as stories, e um
+  `MemoryRouter` envolve cada uma (os cards e o formulário têm links).
+- `MovieForm` recebe um `QueryClient` próprio com os gêneros já no cache, sem nenhuma
+  busca. Em "com erros de validação", uma função `play` envia o formulário e confere as
+  mensagens da validação real.
+- O pôster mock é um SVG local (`src/stories/fixtures/`), então as stories funcionam
+  sem internet.
+
+Para uma story nova, crie `Componente.stories.tsx` ao lado do componente; os dados
+mockados compartilhados ficam em `src/stories/fixtures/`.
+
 ## Rodando com Docker
 
 Alternativa aos passos acima: o `docker-compose.yml` da raiz sobe o backend e o frontend
@@ -361,8 +393,10 @@ POST /api/v1/movies
 │   │   ├── components/     # componentes reutilizáveis (cards, nota, modal, etiquetas…)
 │   │   ├── hooks/          # hooks genéricos (debounce, título da aba)
 │   │   ├── pages/          # uma página por rota + subpastas por tela
+│   │   ├── stories/        # dados mockados e decorators das stories do Storybook
 │   │   ├── styles/         # tema (variáveis CSS globais)
 │   │   └── test/           # utilitários dos testes (mock da API, render com providers)
+│   ├── .storybook/         # configuração do Storybook (react-vite) e CSS global
 │   ├── e2e/                # testes Playwright: specs, page objects e subida da API de teste
 │   ├── playwright.config.ts
 │   ├── Dockerfile          # build com Node e site estático no nginx

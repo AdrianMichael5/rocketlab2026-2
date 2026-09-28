@@ -2,11 +2,12 @@ import js from '@eslint/js'
 import globals from 'globals'
 import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
+import storybook from 'eslint-plugin-storybook'
 import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores(['dist', 'storybook-static', '!.storybook']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
@@ -18,5 +19,11 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
+  },
+  ...storybook.configs['flat/recommended'],
+  {
+    // Stories exportam objetos (meta e stories), não só componentes.
+    files: ['**/*.stories.tsx', '.storybook/**/*.{ts,tsx}'],
+    rules: { 'react-refresh/only-export-components': 'off' },
   },
 ])

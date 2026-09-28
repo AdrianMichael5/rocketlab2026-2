@@ -35,6 +35,9 @@ cadastro e avaliações. O usuário é o administrador do catálogo (não há lo
 - Para os testes E2E: **Google Chrome** instalado ou o Chromium do Playwright (veja
   [Testes E2E](#testes-e2e-playwright))
 
+Para rodar só com Docker, basta o **Docker com Compose v2** e os CSVs (veja
+[Rodando com Docker](#rodando-com-docker)).
+
 ## Como rodar
 
 Os comandos abaixo partem da raiz do repositório. Onde o comando muda entre sistemas,
@@ -162,6 +165,60 @@ Acesse <http://localhost:5173>. Essa origem já está liberada no CORS do backen
 
 Para gerar a versão de produção: `npm run build` (sai em `frontend/dist/`).
 
+## Rodando com Docker
+
+Alternativa aos passos acima: o `docker-compose.yml` da raiz sobe o backend e o frontend
+sem precisar instalar Python ou Node na máquina.
+
+| Serviço | Imagem | Endereço |
+|---|---|---|
+| `backend` | `python:3.12-slim` + uvicorn | <http://localhost:8000> (Swagger em `/docs`) |
+| `frontend` | build com `node:22`, servido pelo `nginx` | <http://localhost:5173> |
+
+**1. Colocar os CSVs em `backend/data/`** (mesmos arquivos do passo 4 do backend). A
+pasta é montada no container como **somente leitura**.
+
+**2. Subir os serviços**
+
+```bash
+docker compose up --build -d
+```
+
+Ao iniciar, o backend roda `alembic upgrade head` antes do servidor. O banco SQLite fica
+no volume nomeado `db-data`, então os dados continuam lá depois de `docker compose down`.
+
+**3. Carregar os dados** (sob demanda, só na primeira vez ou para recarregar tudo)
+
+```bash
+docker compose run --rm backend python -m scripts.seed
+```
+
+Leva cerca de 1 a 2 minutos (~1,7 milhão de linhas). O seed apaga e recarrega as tabelas,
+então rode com a aplicação sem uso. As migrações também rodam antes do seed, então ele
+funciona mesmo com o volume vazio.
+
+**Comandos úteis**
+
+```bash
+docker compose logs -f backend                 # acompanhar os logs da API
+docker compose down                            # parar (mantém o banco)
+docker compose down -v                         # parar e apagar o banco (volume db-data)
+```
+
+**URL da API no frontend.** O Vite grava `VITE_API_URL` no bundle durante o build, então
+a variável é um *build arg* (padrão `http://localhost:8000/api/v1`, o endereço que o
+**navegador** usa para chegar na API). Para trocar, refaça a imagem do frontend:
+
+```bash
+VITE_API_URL=http://meu-host:8000/api/v1 docker compose build frontend
+```
+
+Se mudar a origem do frontend, ajuste também `BACKEND_CORS_ORIGINS` no
+`docker-compose.yml`.
+
+> As portas 8000 e 5173 são as mesmas do ambiente local: pare o `uvicorn` e o
+> `npm run dev` antes de subir os containers.
+
 ## Testes
 
 ### Backend
@@ -282,7 +339,9 @@ POST /api/v1/movies
 │   ├── migrations/         # ambiente e revisões do Alembic
 │   ├── scripts/seed.py     # carga dos CSVs
 │   ├── data/               # CSVs (não versionados)
-│   └── tests/              # pytest
+│   ├── tests/              # pytest
+│   ├── Dockerfile          # imagem da API (migra ao subir; ver docker-entrypoint.sh)
+│   └── docker-entrypoint.sh
 ├── frontend/
 │   ├── src/
 │   │   ├── api/            # cliente HTTP tipado, tipos da API, chaves do React Query
@@ -292,7 +351,10 @@ POST /api/v1/movies
 │   │   ├── styles/         # tema (variáveis CSS globais)
 │   │   └── test/           # utilitários dos testes (mock da API, render com providers)
 │   ├── e2e/                # testes Playwright: specs, page objects e subida da API de teste
-│   └── playwright.config.ts
+│   ├── playwright.config.ts
+│   ├── Dockerfile          # build com Node e site estático no nginx
+│   └── nginx.conf          # fallback de SPA para as rotas do React Router
+├── docker-compose.yml      # backend + frontend (ver "Rodando com Docker")
 └── README.md
 ```
 

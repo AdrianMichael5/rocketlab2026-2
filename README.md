@@ -7,25 +7,33 @@ cadastro e avaliações. O usuário é o administrador do catálogo (não há lo
 
 ## Funcionalidades
 
-- **Catálogo paginado** com busca full-text por título, diretores e atores (sem
-  diferenciar acentos nem maiúsculas, pelo início das palavras), filtros por gênero e ano e ordenação por título, ano ou nota. O estado da busca fica
-  na URL, então dá para compartilhar o link ou usar o botão Voltar do navegador.
+- **Catálogo paginado** com busca por título, diretores e atores, filtros por gênero e
+  ano e ordenação por título, ano ou nota. O estado da busca fica na URL, então dá para
+  compartilhar o link ou usar o botão Voltar do navegador.
 - **Detalhe do filme**: sinopse, elenco, ficha técnica (direção, gêneros, duração,
-  roteiro, produtoras), bilheteria e notas externas (TMDB/IMDb). Diretores, roteiristas
-  e atores são links para a página da pessoa.
-- **Página da pessoa** (`/pessoas/:id`): nome, papel (direção, atuação ou roteiro) e os
-  filmes dela do mais recente ao mais antigo, paginados, com pôster e média. Como
-  `dim_people` é única por nome + papel, quem dirige e atua aparece em duas páginas.
+  roteiro, produtoras), bilheteria e notas externas (TMDB/IMDb).
 - **Avaliações**: nome, nota de 0 a 10 e comentário. A média e a quantidade de
   avaliações são atualizadas na hora, no detalhe e no catálogo.
 - **Cadastro, edição e remoção de filmes**, com diretores e gêneros como etiquetas.
   Gêneros e pessoas já existentes são reaproveitados pelo nome. A remoção pede
   confirmação.
-- **Insights** (`/insights`): números gerais, top 10 por média dos usuários e por
-  lucro (clicáveis até o detalhe), média por gênero, filmes por ano e comparação
-  usuários × IMDb × TMDB por gênero, em gráficos com tabela de dados alternativa.
-- **Acessível e responsivo**: WCAG 2.2 AA verificado com axe em 320px, 768px e 1280px,
-  uso completo pelo teclado e títulos de aba por página.
+
+## Funcionalidades extras
+
+Além do que o enunciado pede. Cada item leva à seção com os detalhes.
+
+| Extra | O que faz | Como usar |
+|---|---|---|
+| **Busca full-text (FTS5)** | Busca por título, diretores e atores sem diferenciar acentos nem maiúsculas, pelo início das palavras ("pod chef" → "O Poderoso Chefão") | Campo de busca do catálogo ou `GET /api/v1/movies?q=...`. Ver [Busca full-text](#busca-full-text-fts5) |
+| **Painel de insights** | Números gerais, top 10 por média e por lucro, média por gênero, filmes por ano e usuários × IMDb × TMDB, em gráficos com tabela de dados alternativa | Link "Insights" no topo ou <http://localhost:5173/insights>; API em `GET /api/v1/stats`. Ver [Insights](#insights-agregações-no-sql-e-regras-sobre-os-dados) |
+| **Filmografia de pessoas** | Página de cada diretor, ator ou roteirista com os filmes dele, do mais recente ao mais antigo, com pôster e média | Clique em um nome no detalhe do filme (`/pessoas/:id`); API em `GET /api/v1/people/{id}`. Quem dirige e atua tem duas páginas (`dim_people` é única por nome + papel) |
+| **Cache em memória com invalidação** | Guarda as respostas de `GET /movies`, `/stats` e `/genres` por 60 s e limpa tudo a cada escrita | Ligado por padrão; ajuste com `CACHE_ENABLED` e `CACHE_TTL_SECONDS`. Ver [Cache em memória](#cache-em-memória) |
+| **Script de benchmark** | Mede o tempo de um endpoint com e sem cache, direto no app (sem servidor) | `python -m scripts.benchmark` em `backend/`. Ver [Scripts do backend](#scripts-do-backend) |
+| **Docker Compose** | Sobe backend (com migrações automáticas) e frontend (nginx) sem instalar Python nem Node | `docker compose up --build -d`. Ver [Rodando com Docker](#rodando-com-docker) |
+| **CI no GitHub Actions** | A cada push ou PR na `main`: `ruff` + `pytest` no backend, `lint` + `build` no frontend | Automático; o selo no topo mostra o estado da `main`. Para reproduzir local, veja [Testes](#testes) |
+| **Storybook** | Catálogo visual de `Rating`, `MovieCard`, `Pagination` e `MovieForm` com dados mockados, sem precisar da API | `npm run storybook` em `frontend/`. Ver [Storybook](#storybook) |
+| **Testes E2E e de acessibilidade** | Playwright nos fluxos principais + axe (WCAG 2.2 AA) em 320px, 768px e 1280px e navegação só pelo teclado | `npm run test:e2e` em `frontend/`, sem subir nada antes. Ver [Testes E2E](#testes-e2e-playwright) |
+| **Acessível e responsivo** | WCAG 2.2 AA, uso completo pelo teclado, título de aba por página, contraste verificado | Sempre ativo |
 
 ## Stack
 
@@ -94,6 +102,7 @@ Os valores padrão já funcionam. As variáveis disponíveis são:
 | `DATABASE_URL` | `sqlite+aiosqlite:///./rocketlab.db` | Banco de dados (arquivo `backend/rocketlab.db`) |
 | `BACKEND_CORS_ORIGINS` | `["http://localhost:5173"]` | Origens liberadas no CORS (a do frontend) |
 | `ENVIRONMENT` | `local` | Em `local`, o SQLAlchemy registra cada SQL no console |
+| `PROJECT_VERSION` | `2026.2` | Versão exibida no Swagger (`/docs`) |
 | `LOG_LEVEL` | `INFO` | Nível de log |
 | `CACHE_ENABLED` | `true` | Liga o cache em memória de `GET /movies`, `/stats` e `/genres` |
 | `CACHE_TTL_SECONDS` | `60` | Validade de cada entrada do cache (maior que 0; para desligar, use `CACHE_ENABLED`) |
@@ -147,6 +156,23 @@ uvicorn app.main:app --reload
 - API: <http://localhost:8000>
 - Documentação interativa (Swagger): <http://localhost:8000/docs>
 - Checagem de saúde: <http://localhost:8000/health>
+
+### Scripts do backend
+
+Todos rodam de dentro de `backend/`, com o ambiente virtual ativado (os comandos são
+iguais no Windows e no Linux/Mac).
+
+| Comando | Para que serve |
+|---|---|
+| `alembic upgrade head` | Cria ou atualiza as tabelas (passo 5) |
+| `python -m scripts.seed` | Carrega os CSVs de `backend/data/` (passo 6). Apaga e recarrega tudo |
+| `python -m scripts.benchmark` | Mede `GET /api/v1/movies` com e sem cache (20 chamadas de cada) |
+| `python -m scripts.benchmark --path "/api/v1/stats" --calls 50` | Mede outro endpoint, com outra quantidade de chamadas |
+
+O benchmark usa o banco configurado no `.env`, então rode o seed antes para ter números
+realistas. Os resultados medidos estão em [Cache em memória](#cache-em-memória).
+
+Não há script para criar administrador: o sistema não tem login.
 
 ### Frontend
 
@@ -252,12 +278,30 @@ docker compose down -v                         # parar e apagar o banco (volume 
 a variável é um *build arg* (padrão `http://localhost:8000/api/v1`, o endereço que o
 **navegador** usa para chegar na API). Para trocar, refaça a imagem do frontend:
 
+Windows (PowerShell):
+
+```powershell
+$env:VITE_API_URL = "http://meu-host:8000/api/v1"; docker compose build frontend
+```
+
+Linux/Mac:
+
 ```bash
 VITE_API_URL=http://meu-host:8000/api/v1 docker compose build frontend
 ```
 
 Se mudar a origem do frontend, ajuste também `BACKEND_CORS_ORIGINS` no
 `docker-compose.yml`.
+
+**Variáveis no Docker.** O backend não lê o `backend/.env` dentro do container: o
+`docker-compose.yml` define `DATABASE_URL` (banco em `/app/db/rocketlab.db`, no volume) e
+`BACKEND_CORS_ORIGINS`. As demais variáveis da [tabela do backend](#backend) usam os
+valores padrão. Para mudar alguma, acrescente-a em `services.backend.environment`.
+
+> **Windows:** o `.gitattributes` mantém o `docker-entrypoint.sh` com fim de linha LF
+> mesmo em clones no Windows. Se o container do backend falhar com
+> `exec ./docker-entrypoint.sh: no such file or directory`, o arquivo foi salvo com CRLF
+> por algum editor: converta-o de volta para LF e refaça a imagem.
 
 > As portas 8000 e 5173 são as mesmas do ambiente local: pare o `uvicorn` e o
 > `npm run dev` antes de subir os containers.
@@ -283,9 +327,13 @@ Dentro de `frontend/`:
 ```bash
 npm run lint            # ESLint
 npm run build           # checagem de tipos + build
-npm test                # 322 testes (Vitest + Testing Library)
+npm test                # 333 testes (Vitest + Testing Library)
+npm run test:watch      # reexecuta ao salvar
 npm run test:coverage   # com cobertura (~99%)
 ```
+
+Esses comandos (e os do backend) são os mesmos no Windows e no Linux/Mac. A CI roda
+`ruff check .` + `pytest` no backend e `npm run lint` + `npm run build` no frontend.
 
 ### Testes E2E (Playwright)
 
@@ -293,6 +341,8 @@ Os testes E2E cobrem os fluxos de ponta a ponta:
 
 - buscar filme, abrir detalhe e avaliar;
 - cadastrar, editar e remover filme;
+- página da pessoa a partir do detalhe;
+- insights (ranking leva ao detalhe do filme);
 - acessibilidade (axe) e layout em 320px, 768px e 1280px;
 - navegação só pelo teclado.
 
@@ -330,6 +380,15 @@ PW_CHANNEL=chromium npm run test:e2e
 ```
 
 O relatório HTML fica em `frontend/playwright-report/` (`npx playwright show-report`).
+
+Variáveis opcionais dos testes E2E (defina como no exemplo do `PW_CHANNEL` acima):
+
+| Variável | Padrão | Para que serve |
+|---|---|---|
+| `PW_CHANNEL` | `chrome` | Navegador: `chrome` (instalado na máquina) ou `chromium` (do Playwright) |
+| `E2E_PYTHON` | Python do `backend/.venv` | Python usado para migrar e subir a API de teste (`.venv\Scripts\python.exe` no Windows, `.venv/bin/python` no Linux/Mac; sem venv, `python` do PATH) |
+| `E2E_API_PORT` | `8001` | Porta da API de teste |
+| `E2E_WEB_PORT` | `5174` | Porta do frontend de teste |
 
 ## Endpoints principais
 

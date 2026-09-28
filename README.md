@@ -12,13 +12,9 @@ cadastro e avaliações. O usuário é o administrador do catálogo (não há lo
 
 <div align="center">
 
-https://youtu.be/iwsAKXBI-tk
+[![▶ Assistir no YouTube](docs/images/banner.png)](https://youtu.be/iwsAKXBI-tk)
 
-<br/>
-
-<a href="https://youtu.be/iwsAKXBI-tk">
-  <img src="docs/banner.png" alt="RocketLab Filmes" width="600"/>
-</a>
+*Clique na imagem para assistir à demonstração completa no YouTube*
 
 </div>
 

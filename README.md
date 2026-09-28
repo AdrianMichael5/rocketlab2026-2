@@ -393,8 +393,12 @@ catálogo e pela página de insights.
 
 ## Stack
 
-**Backend:** Python 3.11+, FastAPI, SQLAlchemy 2.0 (async), Alembic, Pydantic 2, SQLite (aiosqlite) · **Frontend:** React 19, TypeScript, Vite, React Router, TanStack Query, Recharts, CSS Modules.<br>
-**Testes:** pytest + httpx; Vitest + Testing Library; Playwright + axe-core (E2E e acessibilidade) · **Qualidade:** Ruff (backend), ESLint + `tsc` (frontend).
+| Camada | Tecnologias |
+|---|---|
+| **Backend** | Python 3.11+, FastAPI, SQLAlchemy 2.0 (async), Alembic, Pydantic 2, SQLite + aiosqlite |
+| **Frontend** | React 19, TypeScript, Vite, React Router, TanStack Query, Recharts, CSS Modules |
+| **Testes** | pytest + httpx · Vitest + Testing Library · Playwright + axe-core (E2E e acessibilidade) |
+| **Qualidade** | Ruff (backend) · ESLint + `tsc` (frontend) |
 
 ## Execução manual
 

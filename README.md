@@ -1,3 +1,5 @@
+[![CI](https://github.com/AdrianMichael5/rocketlab2026-2/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/AdrianMichael5/rocketlab2026-2/actions/workflows/ci.yml)
+
 # RocketLab Filmes — Sistema de Avaliação de Filmes
 
 Projeto do **Visagio Rocket Lab 2026**: um catálogo de ~95 mil filmes com busca,

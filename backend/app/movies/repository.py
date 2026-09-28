@@ -6,6 +6,7 @@ from sqlalchemy import ColumnElement, Select, delete, exists, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import contains_eager, selectinload
 
+from app.movies import search
 from app.movies.models import (
     DimGenre,
     DimMovie,
@@ -17,11 +18,32 @@ from app.movies.models import (
 from app.movies.schemas import MovieFilters, MovieOrder
 
 DIRETOR: PersonType = "Diretor"
+# Busca FTS com mais resultados que isso, ordenada por título: percorrer o índice de
+# título (já na ordem pedida) sai mais barato que ordenar todos os resultados. Medido no
+# catálogo real: "the" (23 mil filmes) cai de ~750 ms para ~75 ms; já "spielberg"
+# (8 filmes) fica em <1 ms só no plano padrão.
+LARGE_SEARCH_RESULT = 500
 
 
-def _apply_filters(stmt: Select, filters: MovieFilters) -> Select:
+def _search_clause(q: str, *, scan_title_index: bool) -> ColumnElement[bool]:
+    """FTS por prefixo em título, diretores e atores; buscas curtas ou só com pontuação
+    continuam por trecho do título (LIKE)."""
+
+    match = search.build_match_query(q) if len(q.strip()) >= search.MIN_FTS_QUERY_LENGTH else None
+    if match is None:
+        return func.lower(DimMovie.titulo).contains(q.lower(), autoescape=True)
+    # `sk_movie_id || ''` impede o SQLite de partir da lista do FTS pela chave primária,
+    # e ele passa a percorrer o índice usado no ORDER BY.
+    movie_id = DimMovie.sk_movie_id.concat("") if scan_title_index else DimMovie.sk_movie_id
+    # IN (subconsulta) não duplica filmes e mantém o total da paginação correto.
+    return movie_id.in_(search.matching_movie_ids(match))
+
+
+def _apply_filters(
+    stmt: Select, filters: MovieFilters, *, scan_title_index: bool = False
+) -> Select:
     if filters.q:
-        stmt = stmt.where(func.lower(DimMovie.titulo).contains(filters.q.lower(), autoescape=True))
+        stmt = stmt.where(_search_clause(filters.q, scan_title_index=scan_title_index))
     if filters.ano is not None:
         stmt = stmt.where(DimMovie.ano_lancamento == filters.ano)
     if filters.genero:
@@ -63,8 +85,13 @@ async def list_movies(
         # Página além do fim: evita ordenar e percorrer o catálogo inteiro à toa.
         return [], total
 
+    scan_title_index = filters.ordem == "titulo" and total > LARGE_SEARCH_RESULT
     page_stmt = (
-        _apply_filters(select(DimMovie).outerjoin(DimMovie.reviews_summary), filters)
+        _apply_filters(
+            select(DimMovie).outerjoin(DimMovie.reviews_summary),
+            filters,
+            scan_title_index=scan_title_index,
+        )
         .options(contains_eager(DimMovie.reviews_summary), selectinload(DimMovie.genres))
         .order_by(*_order_by(filters.ordem))
         .offset(offset)
@@ -146,8 +173,18 @@ async def resolve_directors(session: AsyncSession, nomes: list[str]) -> list[Dim
     return resolvidos
 
 
+async def sync_search_index(session: AsyncSession, sk_movie_id: str) -> None:
+    """Regrava a linha do filme no índice FTS a partir do que já foi enviado ao banco."""
+
+    params = {"sk_movie_id": sk_movie_id}
+    await session.execute(search.DELETE_ENTRY, params)
+    await session.execute(search.INSERT_ENTRY, params)
+
+
 async def delete_movie(session: AsyncSession, sk_movie_id: str) -> bool:
-    """Remove o filme; avaliações, resumo, fact e bridges saem pelo ON DELETE CASCADE."""
+    """Remove o filme e sua linha no índice FTS; avaliações, resumo, fact e bridges saem
+    pelo ON DELETE CASCADE."""
 
     result = await session.execute(delete(DimMovie).where(DimMovie.sk_movie_id == sk_movie_id))
+    await session.execute(search.DELETE_ENTRY, {"sk_movie_id": sk_movie_id})
     return result.rowcount > 0

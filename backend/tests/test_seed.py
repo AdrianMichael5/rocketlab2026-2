@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 from app.db.base import Base
 from app.movies.models import DimMovie, DimReview, FactMoviePerformance
+from app.movies.search import SEARCH_TABLE
 from scripts.seed import (
     SeedError,
     clean_sinopse,
@@ -19,7 +20,7 @@ from scripts.seed import (
     to_decimal,
     to_int,
 )
-from tests.db import build_memory_engine
+from tests.db import build_memory_engine, create_schema
 
 CSV_FIXTURES: dict[str, list[list[str]]] = {
     "dim_genres.csv": [["nome_genero", "sk_genre_id"], ["Horror", "g1"], ["Drama", "g2"]],
@@ -100,8 +101,7 @@ def write_csv_fixtures(data_dir: Path, overrides: dict[str, list[list[str]]] | N
 @pytest.fixture
 async def engine() -> AsyncIterator[AsyncEngine]:
     memory_engine = build_memory_engine()
-    async with memory_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    await create_schema(memory_engine)
     yield memory_engine
     await memory_engine.dispose()
 
@@ -284,3 +284,36 @@ async def test_seed_requires_migrated_schema(data_dir: Path) -> None:
             await seed(empty_engine, data_dir)
     finally:
         await empty_engine.dispose()
+
+
+async def search_ids(engine: AsyncEngine, match: str) -> list[str]:
+    async with engine.connect() as conn:
+        result = await conn.execute(
+            text(f"SELECT sk_movie_id FROM {SEARCH_TABLE} WHERE {SEARCH_TABLE} MATCH :m"),
+            {"m": match},
+        )
+        return sorted(result.scalars())
+
+
+async def test_seed_rebuilds_search_index(engine: AsyncEngine, data_dir: Path) -> None:
+    await seed(engine, data_dir)
+    await seed(engine, data_dir)
+
+    assert await search_ids(engine, '"rings"*') == ["m1"]
+    assert await search_ids(engine, '"diretora"*') == ["m1"]
+    assert await search_ids(engine, '"bruno"*') == ["m2"]
+    assert await search_ids(engine, '"avaliacao"*') == ["m2"]
+    async with engine.connect() as conn:
+        total = (await conn.execute(text(f"SELECT count(*) FROM {SEARCH_TABLE}"))).scalar_one()
+    assert total == 2
+
+
+async def test_seed_requires_search_index_migration(data_dir: Path) -> None:
+    engine_without_index = build_memory_engine()
+    try:
+        async with engine_without_index.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        with pytest.raises(SeedError, match=SEARCH_TABLE):
+            await seed(engine_without_index, data_dir)
+    finally:
+        await engine_without_index.dispose()

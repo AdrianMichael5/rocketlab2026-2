@@ -7,8 +7,8 @@ cadastro e avaliações. O usuário é o administrador do catálogo (não há lo
 
 ## Funcionalidades
 
-- **Catálogo paginado** com busca por trecho do título (sem diferenciar maiúsculas),
-  filtros por gênero e ano e ordenação por título, ano ou nota. O estado da busca fica
+- **Catálogo paginado** com busca full-text por título, diretores e atores (sem
+  diferenciar acentos nem maiúsculas, pelo início das palavras), filtros por gênero e ano e ordenação por título, ano ou nota. O estado da busca fica
   na URL, então dá para compartilhar o link ou usar o botão Voltar do navegador.
 - **Detalhe do filme**: sinopse, elenco, ficha técnica (direção, gêneros, duração,
   roteiro, produtoras), bilheteria e notas externas (TMDB/IMDb). Diretores, roteiristas
@@ -270,7 +270,7 @@ Com o ambiente virtual ativado, dentro de `backend/`:
 
 ```bash
 ruff check .                                   # lint
-pytest                                         # 244 testes (API, modelos, seed, cache, concorrência)
+pytest                                         # 324 testes (API, busca, modelos, seed, cache, concorrência)
 pytest --cov=app --cov-report=term-missing     # com cobertura (~99%)
 ```
 
@@ -338,7 +338,7 @@ Todas as rotas ficam sob `/api/v1`. A documentação completa, com os schemas, e
 
 | Método | Rota | Descrição | Respostas |
 |---|---|---|---|
-| GET | `/movies` | Lista paginada. Parâmetros: `q` (trecho do título), `genero`, `ano`, `ordem` (`titulo` \| `ano` \| `nota`), `page`, `page_size` (padrão 20, máx. 100) | 200, 422 |
+| GET | `/movies` | Lista paginada. Parâmetros: `q` (título, diretores ou atores; ver [Busca full-text](#busca-full-text-fts5)), `genero`, `ano`, `ordem` (`titulo` \| `ano` \| `nota`), `page`, `page_size` (padrão 20, máx. 100) | 200, 422 |
 | GET | `/movies/{sk_movie_id}` | Detalhe: dados, diretores, gêneros, elenco, bilheteria, média. `creditos` repete diretores, atores e roteiristas com o `sk_person_id` | 200, 404 |
 | POST | `/movies` | Cadastra filme (`titulo` obrigatório; `diretores` e `generos` como listas) | 201, 409, 422 |
 | PATCH | `/movies/{sk_movie_id}` | Atualiza só os campos enviados | 200, 404, 409, 422 |
@@ -475,6 +475,39 @@ memória. O seed usa então:
   `dim_reviews`.
 
 Resultado: a carga completa leva cerca de 3 minutos.
+
+### Busca full-text (FTS5)
+
+`?q=` usa uma tabela virtual **SQLite FTS5** (`movies_fts`) com título, diretores e
+atores de cada filme (roteiristas ficam de fora). O tokenizer `unicode61` com
+`remove_diacritics 2` ignora acentos e maiúsculas: "chefao" encontra "Chefão".
+
+- **Prefixo de palavra, todas as palavras:** cada palavra digitada vira `"palavra"*`
+  e todas precisam casar ("pod chef" encontra "O Poderoso Chefão"). Diferente do LIKE
+  anterior, um trecho no meio da palavra ("hefão") não encontra mais nada.
+- **Entrada do usuário nunca vira sintaxe do FTS:** o texto é quebrado em palavras e
+  cada uma vai entre aspas, então `OR`, `NEAR`, `-` ou `"` são só texto
+  (`app/movies/search.py`).
+- **Palavras de uma letra precisam casar exatamente**, sem prefixo: "X-Men" vira
+  `"X" "Men"*` e "Rocky V" vira `"Rocky"* "V"`. Como prefixo, uma letra casaria com
+  quase todo o catálogo. Palavras repetidas são descartadas e só as 10 primeiras entram
+  na busca, o que limita o custo de `q` longos.
+- **Continua no LIKE por trecho do título** quando `q` tem menos de 2 caracteres, só
+  pontuação ou palavras de uma letra ("E.T."), ou tem caracteres chineses, japoneses ou
+  coreanos: o `unicode61` não separa palavras nesses idiomas, então "神隠し" só acha
+  "千と千尋の神隠し" pelo LIKE.
+- **Filtros e paginação iguais:** o FTS entra como `sk_movie_id IN (subconsulta)`,
+  combinável com `genero`, `ano` e `ordem`, sem duplicar filmes nem mudar o `total`.
+  Os resultados seguem a `ordem` pedida, não a relevância.
+- **Criação e sincronização:** a migração `0004` cria a tabela e a preenche com os
+  dados existentes (~26 s na base completa, +53 MB); criar, editar ou remover um filme
+  regrava a linha dele no índice na mesma transação; o seed reconstrói o índice ao
+  final. Mudanças feitas direto no banco não atualizam o índice.
+- **Desempenho (base completa, sem cache):** buscas seletivas ficaram bem mais rápidas
+  ("spielberg" ~6 ms e "star wars" ~7 ms, contra ~100 ms do LIKE). Palavras muito
+  comuns ficaram mais lentas ("the", 23 mil filmes: ~170 ms contra ~60 ms). Nesses
+  casos, com `ordem=titulo`, a página percorre o índice de título em vez de ordenar
+  todos os resultados (sem isso, "the" levava ~750 ms).
 
 ### Insights: agregações no SQL e regras sobre os dados
 

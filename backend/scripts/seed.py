@@ -7,6 +7,7 @@ Uso (a partir de backend/, com o schema já migrado via `alembic upgrade head`):
 O seed é idempotente: limpa todas as tabelas (em ordem reversa de dependência) e
 recarrega tudo em uma única transação. Se qualquer etapa falhar, nada é alterado.
 dim_reviews.csv é ignorado: dim_reviews é recalculada a partir de movie_reviews.
+O índice de busca (movies_fts) é reconstruído ao final, a partir das tabelas carregadas.
 """
 
 import asyncio
@@ -40,6 +41,7 @@ from app.movies.models import (
     bridge_movie_genre,
     bridge_movie_person,
 )
+from app.movies.search import SEARCH_TABLE, rebuild_search_index
 from app.reviews.schemas import CASAS_MEDIA
 
 logger = logging.getLogger("scripts.seed")
@@ -219,7 +221,8 @@ def chunked(rows: Iterable[DbRow], size: int) -> Iterator[list[DbRow]]:
 
 async def ensure_schema(conn: AsyncConnection) -> None:
     existing = await conn.run_sync(lambda sync_conn: set(inspect(sync_conn).get_table_names()))
-    missing = sorted({table.name for table in TABLES_IN_DELETE_ORDER} - existing)
+    required = {table.name for table in TABLES_IN_DELETE_ORDER} | {SEARCH_TABLE}
+    missing = sorted(required - existing)
     if missing:
         raise SeedError(
             f"Tabelas ausentes no banco: {missing}. Rode `alembic upgrade head` antes do seed."
@@ -273,6 +276,13 @@ async def rebuild_review_summary(conn: AsyncConnection) -> int:
     return total
 
 
+async def rebuild_search(conn: AsyncConnection) -> None:
+    started = time.perf_counter()
+    await rebuild_search_index(conn)
+    elapsed = time.perf_counter() - started
+    logger.info("%s: índice de busca reconstruído em %.1fs", SEARCH_TABLE, elapsed)
+
+
 async def seed(engine: AsyncEngine, data_dir: Path = DATA_DIR) -> dict[str, int]:
     """Executa o seed completo em uma única transação e retorna as contagens por tabela."""
 
@@ -284,6 +294,7 @@ async def seed(engine: AsyncEngine, data_dir: Path = DATA_DIR) -> dict[str, int]
         for source in SOURCES:
             counts[source.table.name] = await load_source(conn, source, data_dir)
         counts[DIM_REVIEWS.name] = await rebuild_review_summary(conn)
+        await rebuild_search(conn)
         # Estatísticas do planejador: sem elas o SQLite ignora índices de cobertura.
         await conn.execute(text("ANALYZE"))
     return counts

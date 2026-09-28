@@ -166,6 +166,9 @@ async def _ensure_unique_id_filme(
 
 async def _commit_and_reload(session: AsyncSession, sk_movie_id: str) -> MovieDetail:
     try:
+        # O flush grava filme e créditos antes de o índice FTS lê-los na mesma transação.
+        await session.flush()
+        await repository.sync_search_index(session, sk_movie_id)
         await session.commit()
     except IntegrityError as exc:
         # Rede de segurança para escritas concorrentes que passaram pelas checagens prévias.

@@ -6,7 +6,6 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from app.core.cache import response_cache
-from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
 from app.movies.models import (
@@ -18,7 +17,8 @@ from app.movies.models import (
     FactMoviePerformance,
     MovieReview,
 )
-from tests.db import build_memory_engine
+from app.movies.search import rebuild_search_index
+from tests.db import build_memory_engine, create_schema
 
 
 @pytest.fixture(autouse=True)
@@ -37,8 +37,7 @@ def clear_response_cache() -> Iterator[None]:
 @pytest.fixture
 async def db_engine() -> AsyncIterator[AsyncEngine]:
     memory_engine = build_memory_engine()
-    async with memory_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    await create_schema(memory_engine)
     yield memory_engine
     await memory_engine.dispose()
 
@@ -136,4 +135,7 @@ def build_catalog() -> list[DimMovie]:
 async def catalog(session_factory: async_sessionmaker[AsyncSession]) -> None:
     async with session_factory() as session:
         session.add_all(build_catalog())
+        await session.flush()
+        # O catálogo entra pelo ORM, sem passar pelo service que sincroniza o índice.
+        await rebuild_search_index(session)
         await session.commit()

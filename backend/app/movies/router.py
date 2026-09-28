@@ -30,7 +30,16 @@ async def list_movies(
     session: DbSession,
     page: PageParam = 1,
     page_size: PageSizeParam = DEFAULT_PAGE_SIZE,
-    q: Annotated[str | None, Query(max_length=200, description="Trecho do título")] = None,
+    q: Annotated[
+        str | None,
+        Query(
+            max_length=200,
+            description=(
+                "Início de palavras do título, diretores ou atores, sem diferenciar acentos "
+                "e maiúsculas; com menos de 2 caracteres, trecho do título"
+            ),
+        ),
+    ] = None,
     genero: Annotated[str | None, Query(max_length=50)] = None,
     ano: Annotated[int | None, Query(ge=MIN_ANO, le=MAX_ANO)] = None,
     ordem: MovieOrder = "titulo",

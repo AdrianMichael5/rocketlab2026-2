@@ -6,6 +6,7 @@ from sqlalchemy import engine_from_config, pool
 from app.core.config import get_settings
 from app.db.base import Base
 from app.movies import models  # noqa: F401  Registra as tabelas no metadata.
+from app.movies.search import include_in_autogenerate
 
 config = context.config
 
@@ -26,6 +27,7 @@ def run_migrations_offline() -> None:
     context.configure(
         url=config.get_main_option("sqlalchemy.url"),
         target_metadata=target_metadata,
+        include_name=include_in_autogenerate,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
         render_as_batch=True,
@@ -48,6 +50,7 @@ def run_migrations_online() -> None:
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
+            include_name=include_in_autogenerate,
             render_as_batch=True,
         )
 

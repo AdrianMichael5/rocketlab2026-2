@@ -136,7 +136,7 @@ async def test_list_page_beyond_total_skips_page_query(
     assert len(executed_sql) == 1
 
 
-async def test_search_is_case_insensitive_and_matches_substring(
+async def test_search_is_case_insensitive(
     client: httpx.AsyncClient,
 ) -> None:
     titles = await list_titles(client, q="CHEFÃO")

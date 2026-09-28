@@ -8,7 +8,19 @@ cadastro e avaliações. O usuário é o administrador do catálogo (não há lo
 ![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
 ![FastAPI](https://img.shields.io/badge/FastAPI-async-009688?logo=fastapi&logoColor=white)
 
-![Demonstração: busca no catálogo, detalhe do filme e nova avaliação](docs/images/demo.gif)
+## 📽️ Screencast
+
+<div align="center">
+
+https://youtu.be/iwsAKXBI-tk
+
+<br/>
+
+<a href="https://youtu.be/iwsAKXBI-tk">
+  <img src="docs/banner.png" alt="RocketLab Filmes" width="600"/>
+</a>
+
+</div>
 
 ## Sumário
 

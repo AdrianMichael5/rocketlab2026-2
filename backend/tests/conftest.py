@@ -1,10 +1,11 @@
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 from decimal import Decimal
 
 import httpx
 import pytest
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
+from app.core.cache import response_cache
 from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
@@ -18,6 +19,19 @@ from app.movies.models import (
     MovieReview,
 )
 from tests.db import build_memory_engine
+
+
+@pytest.fixture(autouse=True)
+def clear_response_cache() -> Iterator[None]:
+    """O cache é global ao processo: cada teste começa com ele vazio e ligado,
+    independente de CACHE_ENABLED no ambiente e do que testes anteriores fizeram."""
+
+    was_enabled = response_cache.enabled
+    response_cache.enabled = True
+    response_cache.clear()
+    yield
+    response_cache.enabled = was_enabled
+    response_cache.clear()
 
 
 @pytest.fixture

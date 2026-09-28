@@ -5,6 +5,7 @@ from uuid import uuid4
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.cache import response_cache
 from app.movies import repository
 from app.movies.models import DimMovie, DimReview, PersonType, generate_surrogate_key
 from app.movies.schemas import (
@@ -124,6 +125,16 @@ def _to_detail(movie: DimMovie) -> MovieDetail:
 async def list_movies(
     session: AsyncSession, filters: MovieFilters, page: int, page_size: int
 ) -> Page[MovieListItem]:
+    # Chave com os parâmetros já validados: "?page=1" e a URL sem query caem na mesma entrada.
+    key = ("movies", filters, page, page_size)
+    return await response_cache.get_or_load(
+        key, lambda: _load_movies(session, filters, page, page_size)
+    )
+
+
+async def _load_movies(
+    session: AsyncSession, filters: MovieFilters, page: int, page_size: int
+) -> Page[MovieListItem]:
     movies, total = await repository.list_movies(
         session, filters, offset=(page - 1) * page_size, limit=page_size
     )
@@ -160,6 +171,7 @@ async def _commit_and_reload(session: AsyncSession, sk_movie_id: str) -> MovieDe
         # Rede de segurança para escritas concorrentes que passaram pelas checagens prévias.
         await session.rollback()
         raise MovieConflictError("conflito de unicidade ao salvar o filme") from exc
+    response_cache.clear()
     movie = await repository.get_movie(session, sk_movie_id, refresh=True)
     if movie is None:
         raise MovieNotFoundError(sk_movie_id)
@@ -227,3 +239,4 @@ async def delete_movie(session: AsyncSession, sk_movie_id: str) -> None:
     if not await repository.delete_movie(session, sk_movie_id):
         raise MovieNotFoundError(sk_movie_id)
     await session.commit()
+    response_cache.clear()

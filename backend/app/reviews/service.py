@@ -3,6 +3,7 @@
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.cache import response_cache
 from app.movies.models import MovieReview, generate_surrogate_key
 from app.movies.schemas import Page
 from app.movies.service import MovieNotFoundError
@@ -52,6 +53,7 @@ async def create_review(
         # FK violada: o filme foi removido entre a checagem e a gravação.
         await session.rollback()
         raise MovieNotFoundError(sk_movie_id) from exc
+    response_cache.clear()
     # created_at já veio do banco no INSERT (eager_defaults em MovieReview).
     return ReviewOut.model_validate(review)
 
@@ -62,3 +64,4 @@ async def delete_review(session: AsyncSession, sk_movie_review_id: str) -> None:
         raise ReviewNotFoundError(sk_movie_review_id)
     await repository.recalculate_summary(session, sk_movie_id)
     await session.commit()
+    response_cache.clear()

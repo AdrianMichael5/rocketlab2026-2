@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { ApiError } from './client'
-import { MAX_QUERY_RETRIES, createQueryClient, shouldRetryQuery } from './queryClient'
+import {
+  MAX_QUERY_RETRIES,
+  STALE_TIME_MS,
+  createQueryClient,
+  shouldRetryQuery,
+} from './queryClient'
 
 describe('shouldRetryQuery', () => {
   it.each([400, 404, 409, 422])('não repete erros %s do cliente', (status) => {
@@ -24,5 +29,12 @@ describe('createQueryClient', () => {
 
     expect(client.getDefaultOptions().queries?.retry).toBe(shouldRetryQuery)
     expect(client.getDefaultOptions().mutations?.retry).toBe(false)
+  })
+
+  it('considera os dados frescos por 30s, metade do TTL do cache do backend', () => {
+    const client = createQueryClient()
+
+    expect(STALE_TIME_MS).toBe(30_000)
+    expect(client.getDefaultOptions().queries?.staleTime).toBe(STALE_TIME_MS)
   })
 })

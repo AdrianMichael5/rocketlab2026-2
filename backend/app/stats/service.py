@@ -2,6 +2,7 @@
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.cache import response_cache
 from app.stats import repository
 from app.stats.schemas import (
     AnoStatsOut,
@@ -14,6 +15,10 @@ from app.stats.schemas import (
 
 
 async def get_stats(session: AsyncSession) -> StatsOut:
+    return await response_cache.get_or_load(("stats",), lambda: _load_stats(session))
+
+
+async def _load_stats(session: AsyncSession) -> StatsOut:
     # Em sequência: uma AsyncSession não aceita consultas concorrentes.
     resumo = await repository.get_resumo(session)
     top_avaliados = await repository.list_top_avaliados(session)

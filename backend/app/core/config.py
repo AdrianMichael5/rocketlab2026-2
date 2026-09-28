@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -15,6 +16,9 @@ class Settings(BaseSettings):
     database_url: str = "sqlite+aiosqlite:///./rocketlab.db"
     backend_cors_origins: list[str] = ["http://localhost:5173"]
     log_level: str = "INFO"
+    cache_enabled: bool = True
+    # Para desligar o cache use CACHE_ENABLED=false; TTL zero ou negativo é rejeitado.
+    cache_ttl_seconds: float = Field(default=60.0, gt=0)
 
 
 @lru_cache

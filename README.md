@@ -95,6 +95,8 @@ Os valores padrão já funcionam. As variáveis disponíveis são:
 | `BACKEND_CORS_ORIGINS` | `["http://localhost:5173"]` | Origens liberadas no CORS (a do frontend) |
 | `ENVIRONMENT` | `local` | Em `local`, o SQLAlchemy registra cada SQL no console |
 | `LOG_LEVEL` | `INFO` | Nível de log |
+| `CACHE_ENABLED` | `true` | Liga o cache em memória de `GET /movies`, `/stats` e `/genres` |
+| `CACHE_TTL_SECONDS` | `60` | Validade de cada entrada do cache (maior que 0; para desligar, use `CACHE_ENABLED`) |
 
 **4. Colocar os CSVs em `backend/data/`**
 
@@ -268,7 +270,7 @@ Com o ambiente virtual ativado, dentro de `backend/`:
 
 ```bash
 ruff check .                                   # lint
-pytest                                         # 181 testes (API, modelos, seed, concorrência)
+pytest                                         # 244 testes (API, modelos, seed, cache, concorrência)
 pytest --cov=app --cov-report=term-missing     # com cobertura (~99%)
 ```
 
@@ -373,7 +375,7 @@ POST /api/v1/movies
 ├── backend/
 │   ├── app/
 │   │   ├── api/            # dependências comuns (sessão, paginação) e router v1
-│   │   ├── core/           # configurações (.env) e logging
+│   │   ├── core/           # configurações (.env), logging e cache em memória
 │   │   ├── db/             # Base ORM, engine e sessões
 │   │   ├── movies/         # domínio de filmes: models, schemas, repository, service, router
 │   │   ├── reviews/        # domínio de avaliações (mesma divisão em camadas)
@@ -382,7 +384,7 @@ POST /api/v1/movies
 │   │   ├── stats/          # agregações da página de insights (GET /stats)
 │   │   └── main.py         # criação da aplicação FastAPI
 │   ├── migrations/         # ambiente e revisões do Alembic
-│   ├── scripts/seed.py     # carga dos CSVs
+│   ├── scripts/            # seed.py (carga dos CSVs) e benchmark.py (tempos com/sem cache)
 │   ├── data/               # CSVs (não versionados)
 │   ├── tests/              # pytest
 │   ├── Dockerfile          # imagem da API (migra ao subir; ver docker-entrypoint.sh)
@@ -496,6 +498,71 @@ Resultado: a carga completa leva cerca de 3 minutos.
 - **Gráficos com Recharts**, carregados só na rota `/insights` (chunk separado). As
   cores das séries são os matizes do tema escurecidos e validados para daltonismo; cada
   gráfico tem a tabela de dados equivalente.
+
+### Cache em memória
+
+As três leituras mais repetidas passam por um cache em memória do próprio processo
+(`app/core/cache.py`), sem Redis nem dependência nova: `GET /movies`, `GET /stats` e
+`GET /genres`.
+
+- **O que fica guardado:** a resposta já montada pelo service, por **60 s**
+  (`CACHE_TTL_SECONDS`).
+- **Chave:** endpoint + parâmetros **já validados** (`q`, `genero`, `ano`, `ordem`,
+  `page`, `page_size`). Assim, `/movies` e `/movies?page=1&page_size=20` usam a mesma
+  entrada. Requisições inválidas (422) nem chegam ao cache.
+- **Invalidação:** criar, editar ou remover filme e criar ou remover avaliação limpam
+  o cache inteiro **depois do commit**. Qualquer uma dessas escritas afeta os três
+  endpoints: uma avaliação muda a média na lista, a ordenação por nota e o `/stats`; um
+  filme novo pode trazer um gênero novo. Com um só administrador escrevendo, invalidar
+  só parte do cache não compensa a complexidade.
+- **Leitura que cruza uma escrita:** se uma escrita termina enquanto uma leitura ainda
+  consulta o banco, o resultado dessa leitura não é guardado. Um contador de gerações
+  impede que um dado antigo volte para o cache.
+- **Memória limitada:** no máximo 512 entradas. Quando o limite é atingido, saem
+  primeiro as expiradas e depois a mais antiga.
+- **No frontend**, o React Query considera os dados frescos por **30 s** (`staleTime`).
+  Nesse intervalo, trocar de página e voltar nem chama a API. Depois disso, a nova
+  consulta tende a cair no cache do backend.
+
+Limitações conhecidas:
+
+- O cache é **por processo**. Com vários workers do uvicorn, cada um teria o seu, e a
+  invalidação só valeria no worker que recebeu a escrita. Hoje a API roda com um
+  worker; para escalar, o caminho seria um cache compartilhado (Redis).
+- Mudanças feitas **fora da API** (rodar o seed com o servidor no ar, editar o banco à
+  mão) aparecem em até 60 s.
+- Várias requisições simultâneas com a mesma chave ainda não guardada consultam o banco
+  ao mesmo tempo. Com esse volume de acessos, não vale a pena coordenar isso.
+
+**Medição.** O script `backend/scripts/benchmark.py` chama o app direto via
+`httpx.ASGITransport`, sem servidor nem rede. Por isso os tempos medem só o trabalho da
+API. O script faz 20 chamadas com o cache desligado e depois 20 com o cache ligado
+(começando vazio, então a primeira é um miss):
+
+```bash
+cd backend
+python -m scripts.benchmark                                    # GET /api/v1/movies, 20 chamadas
+python -m scripts.benchmark --path "/api/v1/stats" --calls 50  # outro endpoint
+```
+
+Resultados com a base completa (95 mil filmes), Python 3.12, Windows 11, SQLite local.
+Média de 20 chamadas:
+
+| Requisição | Sem cache | Com cache | Ganho |
+|---|---:|---:|---:|
+| `GET /movies` (1ª página, padrão)¹ | 5,8 ms | 1,3 ms | ~4× |
+| `GET /movies?q=star&ordem=nota` | 103,1 ms | 6,6 ms | ~16× |
+| `GET /movies?genero=Drama&page=50` | 197,1 ms | 10,8 ms | ~18× |
+| `GET /stats` | 274,5 ms | 13,8 ms | ~20× |
+| `GET /genres` | 2,5 ms | 1,0 ms | ~2,5× |
+
+¹ Média de 3 execuções (5,9 / 5,6 / 5,8 ms sem cache; 1,2 / 1,4 / 1,4 ms com cache).
+
+A média com cache inclui a primeira chamada, que é um miss e custa o mesmo que sem
+cache. A mediana mostra o custo de um acerto: cerca de **1 ms** em todos os endpoints,
+já que sobra só a serialização da resposta. O ganho é maior justamente nas consultas
+caras (busca, filtros, páginas distantes e `/stats`), que são as mais repetidas pelo
+catálogo e pela página de insights.
 
 ### Outras decisões
 

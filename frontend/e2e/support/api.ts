@@ -7,6 +7,7 @@ export interface MovieInput {
   ano_lancamento?: number
   sinopse?: string
   duracao_minutos?: number
+  url_poster?: string
   diretores?: string[]
   generos?: string[]
 }

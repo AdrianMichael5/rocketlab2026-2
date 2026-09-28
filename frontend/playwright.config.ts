@@ -5,7 +5,8 @@ const isCI = Boolean(process.env.CI)
 // Padrão: Chrome instalado na máquina. Em CI (ou após `npx playwright install chromium`),
 // use PW_CHANNEL=chromium para o navegador que acompanha o Playwright.
 const channel = process.env.PW_CHANNEL ?? 'chrome'
-const portsEnv = { E2E_API_PORT: String(API_PORT), E2E_WEB_PORT: String(WEB_PORT) }
+const SCREENSHOTS_SPEC = /screenshots\.spec\.ts$/
+const portsEnv ={ E2E_API_PORT: String(API_PORT), E2E_WEB_PORT: String(WEB_PORT) }
 
 export default defineConfig({
   testDir: './e2e',
@@ -25,7 +26,19 @@ export default defineConfig({
     actionTimeout: 10_000,
     navigationTimeout: 30_000,
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'], channel } }],
+  projects: [
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'], channel },
+      testIgnore: SCREENSHOTS_SPEC,
+    },
+    // Só via `npm run screenshots`: grava as capturas da documentação em docs/images/.
+    {
+      name: 'screenshots',
+      use: { ...devices['Desktop Chrome'], channel },
+      testMatch: SCREENSHOTS_SPEC,
+    },
+  ],
   webServer: [
     {
       command: 'node e2e/start-backend.mjs',

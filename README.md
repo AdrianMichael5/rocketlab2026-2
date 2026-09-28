@@ -12,13 +12,9 @@ cadastro e avaliações. O usuário é o administrador do catálogo (não há lo
 
 <div align="center">
 
-https://youtu.be/iwsAKXBI-tk
+[![▶ Assistir no YouTube](docs/images/banner.png)](https://youtu.be/iwsAKXBI-tk)
 
-<br/>
-
-<a href="https://youtu.be/iwsAKXBI-tk">
-  <img src="docs/banner.png" alt="RocketLab Filmes" width="600"/>
-</a>
+*Clique na imagem para assistir à demonstração completa no YouTube*
 
 </div>
 
@@ -182,6 +178,10 @@ Geradas por `npm run screenshots` (em `frontend/`) e salvas em `docs/images/`.
     <td><b>Cadastro de filme</b><br><img src="docs/images/cadastro-filme.png" alt="Formulário de cadastro de filme preenchido"></td>
     <td><b>Catálogo no celular</b> (390×844)<br><img src="docs/images/catalogo-mobile.png" alt="Catálogo em tela de celular" width="60%"></td>
   </tr>
+   <tr>
+    <td><b>Lista de filmes por Diretor</b><br><img src="docs/images/lista_diretor.png" alt="Lista de filmes por cada diretor"></td>
+    <td><b>Lista de filmes por Roteirista</b><br><img src="docs/images/lista_roteirista.png" alt="Lista de filmes por roteirista"></td>
+  </tr>
   <tr>
     <td colspan="2"><b>Insights</b><br><img src="docs/images/insights.png" alt="Painel de insights com rankings e gráficos"></td>
   </tr>
@@ -189,8 +189,12 @@ Geradas por `npm run screenshots` (em `frontend/`) e salvas em `docs/images/`.
 
 ## Stack
 
-**Backend:** Python 3.11+, FastAPI, SQLAlchemy 2.0 (async), Alembic, Pydantic 2, SQLite (aiosqlite) · **Frontend:** React 19, TypeScript, Vite, React Router, TanStack Query, Recharts, CSS Modules.<br>
-**Testes:** pytest + httpx; Vitest + Testing Library; Playwright + axe-core (E2E e acessibilidade) · **Qualidade:** Ruff (backend), ESLint + `tsc` (frontend).
+| Camada | Tecnologias |
+|---|---|
+| **Backend** | Python 3.11+, FastAPI, SQLAlchemy 2.0 (async), Alembic, Pydantic 2, SQLite + aiosqlite |
+| **Frontend** | React 19, TypeScript, Vite, React Router, TanStack Query, Recharts, CSS Modules |
+| **Testes** | pytest + httpx · Vitest + Testing Library · Playwright + axe-core (E2E e acessibilidade) |
+| **Qualidade** | Ruff (backend) · ESLint + `tsc` (frontend) |
 
 ## Execução manual
 

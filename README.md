@@ -178,6 +178,10 @@ Geradas por `npm run screenshots` (em `frontend/`) e salvas em `docs/images/`.
     <td><b>Cadastro de filme</b><br><img src="docs/images/cadastro-filme.png" alt="Formulário de cadastro de filme preenchido"></td>
     <td><b>Catálogo no celular</b> (390×844)<br><img src="docs/images/catalogo-mobile.png" alt="Catálogo em tela de celular" width="60%"></td>
   </tr>
+   <tr>
+    <td><b>Lista de filmes por Diretor</b><br><img src="docs/images/lista_diretor.png" alt="Lista de filmes por cada diretor"></td>
+    <td><b>Lista de filmes por Roteirista</b><br><img src="docs/images/lista_roteirista.png" alt="Lista de filmes por roteirista"></td>
+  </tr>
   <tr>
     <td colspan="2"><b>Insights</b><br><img src="docs/images/insights.png" alt="Painel de insights com rankings e gráficos"></td>
   </tr>

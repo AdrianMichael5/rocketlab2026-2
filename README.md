@@ -1,270 +1,65 @@
-[![CI](https://github.com/AdrianMichael5/rocketlab2026-2/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/AdrianMichael5/rocketlab2026-2/actions/workflows/ci.yml)
-
 # RocketLab Filmes — Sistema de Avaliação de Filmes
 
 Projeto do **Visagio Rocket Lab 2026**: um catálogo de ~95 mil filmes com busca,
 cadastro e avaliações. O usuário é o administrador do catálogo (não há login).
 
-## Funcionalidades
+[![CI](https://github.com/AdrianMichael5/rocketlab2026-2/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/AdrianMichael5/rocketlab2026-2/actions/workflows/ci.yml)
+![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)
+![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
+![FastAPI](https://img.shields.io/badge/FastAPI-async-009688?logo=fastapi&logoColor=white)
 
-- **Catálogo paginado** com busca por título, diretores e atores, filtros por gênero e
-  ano e ordenação por título, ano ou nota. O estado da busca fica na URL, então dá para
-  compartilhar o link ou usar o botão Voltar do navegador.
-- **Detalhe do filme**: sinopse, elenco, ficha técnica (direção, gêneros, duração,
-  roteiro, produtoras), bilheteria e notas externas (TMDB/IMDb).
-- **Avaliações**: nome, nota de 0 a 10 e comentário. A média e a quantidade de
-  avaliações são atualizadas na hora, no detalhe e no catálogo.
-- **Cadastro, edição e remoção de filmes**, com diretores e gêneros como etiquetas.
-  Gêneros e pessoas já existentes são reaproveitados pelo nome. A remoção pede
-  confirmação.
+![Demonstração: busca no catálogo, detalhe do filme e nova avaliação](docs/images/demo.gif)
 
-## Funcionalidades extras
+## Sumário
 
-Além do que o enunciado pede. Cada item leva à seção com os detalhes.
+1. [Início rápido com Docker](#início-rápido-com-docker)
+2. [Requisitos atendidos](#requisitos-atendidos)
+3. [Funcionalidades extras](#funcionalidades-extras)
+4. [Telas](#telas)
+5. [Decisões técnicas](#decisões-técnicas)
+6. [Stack](#stack)
+7. [Execução manual](#execução-manual)
+8. [Testes](#testes)
+9. [Referência](#referência): [arquitetura](#arquitetura), [endpoints da API](#endpoints-da-api),
+   [variáveis de ambiente](#variáveis-de-ambiente) e [scripts](#scripts)
 
-| Extra | O que faz | Como usar |
-|---|---|---|
-| **Busca full-text (FTS5)** | Busca por título, diretores e atores sem diferenciar acentos nem maiúsculas, pelo início das palavras ("pod chef" → "O Poderoso Chefão") | Campo de busca do catálogo ou `GET /api/v1/movies?q=...`. Ver [Busca full-text](#busca-full-text-fts5) |
-| **Painel de insights** | Números gerais, top 10 por média e por lucro, média por gênero, filmes por ano e usuários × IMDb × TMDB, em gráficos com tabela de dados alternativa | Link "Insights" no topo ou <http://localhost:5173/insights>; API em `GET /api/v1/stats`. Ver [Insights](#insights-agregações-no-sql-e-regras-sobre-os-dados) |
-| **Filmografia de pessoas** | Página de cada diretor, ator ou roteirista com os filmes dele, do mais recente ao mais antigo, com pôster e média | Clique em um nome no detalhe do filme (`/pessoas/:id`); API em `GET /api/v1/people/{id}`. Quem dirige e atua tem duas páginas (`dim_people` é única por nome + papel) |
-| **Cache em memória com invalidação** | Guarda as respostas de `GET /movies`, `/stats` e `/genres` por 60 s e limpa tudo a cada escrita | Ligado por padrão; ajuste com `CACHE_ENABLED` e `CACHE_TTL_SECONDS`. Ver [Cache em memória](#cache-em-memória) |
-| **Script de benchmark** | Mede o tempo de um endpoint com e sem cache, direto no app (sem servidor) | `python -m scripts.benchmark` em `backend/`. Ver [Scripts do backend](#scripts-do-backend) |
-| **Docker Compose** | Sobe backend (com migrações automáticas) e frontend (nginx) sem instalar Python nem Node | `docker compose up --build -d`. Ver [Rodando com Docker](#rodando-com-docker) |
-| **CI no GitHub Actions** | A cada push ou PR na `main`: `ruff` + `pytest` no backend, `lint` + `build` no frontend | Automático; o selo no topo mostra o estado da `main`. Para reproduzir local, veja [Testes](#testes) |
-| **Storybook** | Catálogo visual de `Rating`, `MovieCard`, `Pagination` e `MovieForm` com dados mockados, sem precisar da API | `npm run storybook` em `frontend/`. Ver [Storybook](#storybook) |
-| **Testes E2E e de acessibilidade** | Playwright nos fluxos principais + axe (WCAG 2.2 AA) em 320px, 768px e 1280px e navegação só pelo teclado | `npm run test:e2e` em `frontend/`, sem subir nada antes. Ver [Testes E2E](#testes-e2e-playwright) |
-| **Acessível e responsivo** | WCAG 2.2 AA, uso completo pelo teclado, título de aba por página, contraste verificado | Sempre ativo |
+## Início rápido com Docker
 
-## Stack
-
-| Camada | Tecnologias |
-|---|---|
-| Backend | Python 3.11+, FastAPI, SQLAlchemy 2.0 (async), Alembic, Pydantic 2, SQLite (aiosqlite) |
-| Frontend | React 19, TypeScript, Vite, React Router, TanStack Query, CSS Modules |
-| Testes | pytest + httpx; Vitest + Testing Library; Playwright + axe-core (E2E e acessibilidade) |
-| Qualidade | Ruff (backend), ESLint + `tsc` (frontend) |
-
-## Pré-requisitos
-
-- **Python 3.11 ou superior**
-- **Node.js 22.12 ou superior** (exigência do Vitest 5)
-- **Os CSVs de dados** da camada Diamond (não versionados; veja o passo 4 abaixo)
-- Para os testes E2E: **Google Chrome** instalado ou o Chromium do Playwright (veja
-  [Testes E2E](#testes-e2e-playwright))
-
-Para rodar só com Docker, basta o **Docker com Compose v2** e os CSVs (veja
-[Rodando com Docker](#rodando-com-docker)).
-
-## Como rodar
-
-Os comandos abaixo partem da raiz do repositório. Onde o comando muda entre sistemas,
-há uma versão para **Windows (PowerShell)** e outra para **Linux/Mac**.
-
-### Backend
-
-**1. Criar e ativar o ambiente virtual**
-
-Windows (PowerShell):
-
-```powershell
-cd backend
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-```
-
-> Se o PowerShell bloquear o script de ativação, libere para o usuário atual uma única
-> vez: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
-
-Linux/Mac:
+Precisa só do **Docker com Compose v2** e dos CSVs de dados em `backend/data/` (os
+arquivos estão listados no [passo 4 da execução manual](#backend)). Da raiz do
+repositório:
 
 ```bash
-cd backend
-python3 -m venv .venv
-source .venv/bin/activate
+docker compose up --build -d                                 # 1. sobe API e frontend
+docker compose run --rm backend python -m scripts.seed       # 2. carrega os dados (1ª vez)
 ```
 
-Com o ambiente ativado, os comandos dos próximos passos são iguais nos dois sistemas.
+3. Acesse <http://localhost:5173> (API em <http://localhost:8000>, Swagger em `/docs`).
 
-**2. Instalar as dependências** (inclui as de teste e lint)
+Sem Docker, veja a [execução manual](#execução-manual) (Windows e Linux/Mac).
 
-```bash
-python -m pip install -e ".[dev]"
-```
+<details>
+<summary><b>Mais sobre o Docker</b> (serviços, dados, comandos úteis, URL da API)</summary>
 
-**3. Criar o `.env`**
-
-Windows: `Copy-Item .env.example .env` · Linux/Mac: `cp .env.example .env`
-
-Os valores padrão já funcionam. As variáveis disponíveis são:
-
-| Variável | Padrão | Para que serve |
-|---|---|---|
-| `DATABASE_URL` | `sqlite+aiosqlite:///./rocketlab.db` | Banco de dados (arquivo `backend/rocketlab.db`) |
-| `BACKEND_CORS_ORIGINS` | `["http://localhost:5173"]` | Origens liberadas no CORS (a do frontend) |
-| `ENVIRONMENT` | `local` | Em `local`, o SQLAlchemy registra cada SQL no console |
-| `PROJECT_VERSION` | `2026.2` | Versão exibida no Swagger (`/docs`) |
-| `LOG_LEVEL` | `INFO` | Nível de log |
-| `CACHE_ENABLED` | `true` | Liga o cache em memória de `GET /movies`, `/stats` e `/genres` |
-| `CACHE_TTL_SECONDS` | `60` | Validade de cada entrada do cache (maior que 0; para desligar, use `CACHE_ENABLED`) |
-
-**4. Colocar os CSVs em `backend/data/`**
-
-O seed espera estes arquivos, com estes nomes, direto em `backend/data/`:
-
-```text
-backend/data/
-├── dim_genres.csv
-├── dim_companies.csv
-├── dim_people.csv
-├── dim_movies.csv
-├── bridge_movie_genre.csv
-├── bridge_movie_company.csv
-├── bridge_movie_person.csv
-├── fact_movies_performance.csv
-├── movies_reviews.csv
-└── dim_reviews.csv        # opcional: é ignorado (veja "Decisões técnicas")
-```
-
-Os CSVs estão no `.gitignore` e não vão para o repositório.
-
-**5. Criar as tabelas**
-
-```bash
-alembic upgrade head
-```
-
-O schema é criado só pelo Alembic, nunca por `create_all`.
-
-**6. Carregar os dados (seed)**
-
-```bash
-python -m scripts.seed
-```
-
-- **Duração:** carrega ~1,7 milhão de linhas em cerca de **3 minutos** e mostra o progresso
-  de cada tabela.
-- **Pode rodar de novo:** o seed limpa e recarrega tudo numa única transação. Se algo
-  falhar, o banco fica como estava.
-- **Cuidado:** avaliações e filmes criados pela aplicação são apagados ao rodar de novo.
-
-**7. Subir a API**
-
-```bash
-uvicorn app.main:app --reload
-```
-
-- API: <http://localhost:8000>
-- Documentação interativa (Swagger): <http://localhost:8000/docs>
-- Checagem de saúde: <http://localhost:8000/health>
-
-### Scripts do backend
-
-Todos rodam de dentro de `backend/`, com o ambiente virtual ativado (os comandos são
-iguais no Windows e no Linux/Mac).
-
-| Comando | Para que serve |
-|---|---|
-| `alembic upgrade head` | Cria ou atualiza as tabelas (passo 5) |
-| `python -m scripts.seed` | Carrega os CSVs de `backend/data/` (passo 6). Apaga e recarrega tudo |
-| `python -m scripts.benchmark` | Mede `GET /api/v1/movies` com e sem cache (20 chamadas de cada) |
-| `python -m scripts.benchmark --path "/api/v1/stats" --calls 50` | Mede outro endpoint, com outra quantidade de chamadas |
-
-O benchmark usa o banco configurado no `.env`, então rode o seed antes para ter números
-realistas. Os resultados medidos estão em [Cache em memória](#cache-em-memória).
-
-Não há script para criar administrador: o sistema não tem login.
-
-### Frontend
-
-Em outro terminal, a partir da raiz do repositório:
-
-**1. Instalar as dependências**
-
-```bash
-cd frontend
-npm install
-```
-
-**2. Criar o `.env`** (opcional)
-
-Windows: `Copy-Item .env.example .env` · Linux/Mac: `cp .env.example .env`
-
-A única variável é `VITE_API_URL`, a URL base da API **incluindo** `/api/v1`. Sem o
-arquivo, o padrão é `http://localhost:8000/api/v1`.
-
-**3. Subir o servidor de desenvolvimento**
-
-```bash
-npm run dev
-```
-
-Acesse <http://localhost:5173>. Essa origem já está liberada no CORS do backend.
-
-Para gerar a versão de produção: `npm run build` (sai em `frontend/dist/`).
-
-### Storybook
-
-Catálogo visual dos componentes, isolados do resto do app. As stories usam dados
-mockados e **não chamam a API**: não é preciso subir o backend.
-
-```bash
-cd frontend
-npm run storybook        # http://localhost:6006, recarrega ao editar
-npm run build-storybook  # versão estática em frontend/storybook-static/
-```
-
-| Story | Estados |
-|---|---|
-| Components/Rating/Exibição | notas 0, 5,5 e 10; média do filme ("10,0/10"); tamanhos `sm`, `md`, `lg` |
-| Components/Rating/Entrada | sem nota, nota escolhida, com erro, desabilitado |
-| Components/MovieCard | com e sem pôster, sem avaliações, título longo |
-| Components/Pagination | primeira, do meio e última página |
-| Pages/MovieForm | vazio, preenchido e com erros de validação |
-
-- A nota é texto de 0 a 10, sem estrelas (ver "Nota de 0 a 10 em todo o sistema"):
-  as stories de nota cobrem a exibição (`Rating`) e a entrada (`NotaInput`).
-- O CSS global do app (`src/styles/theme.css`) é aplicado em todas as stories, e um
-  `MemoryRouter` envolve cada uma (os cards e o formulário têm links).
-- `MovieForm` recebe um `QueryClient` próprio com os gêneros já no cache, sem nenhuma
-  busca. Em "com erros de validação", uma função `play` envia o formulário e confere as
-  mensagens da validação real.
-- O pôster mock é um SVG local (`src/stories/fixtures/`), então as stories funcionam
-  sem internet.
-
-Para uma story nova, crie `Componente.stories.tsx` ao lado do componente; os dados
-mockados compartilhados ficam em `src/stories/fixtures/`.
-
-## Rodando com Docker
-
-Alternativa aos passos acima: o `docker-compose.yml` da raiz sobe o backend e o frontend
-sem precisar instalar Python ou Node na máquina.
+O `docker-compose.yml` da raiz sobe o backend e o frontend sem precisar instalar
+Python ou Node na máquina.
 
 | Serviço | Imagem | Endereço |
 |---|---|---|
 | `backend` | `python:3.12-slim` + uvicorn | <http://localhost:8000> (Swagger em `/docs`) |
 | `frontend` | build com `node:22`, servido pelo `nginx` | <http://localhost:5173> |
 
-**1. Colocar os CSVs em `backend/data/`** (mesmos arquivos do passo 4 do backend). A
-pasta é montada no container como **somente leitura**.
+**CSVs.** São os mesmos arquivos do passo 4 do backend. A pasta `backend/data/` é
+montada no container como **somente leitura**.
 
-**2. Subir os serviços**
+**Banco e migrações.** Ao iniciar, o backend roda `alembic upgrade head` antes do
+servidor. O banco SQLite fica no volume nomeado `db-data`, então os dados continuam lá
+depois de `docker compose down`.
 
-```bash
-docker compose up --build -d
-```
-
-Ao iniciar, o backend roda `alembic upgrade head` antes do servidor. O banco SQLite fica
-no volume nomeado `db-data`, então os dados continuam lá depois de `docker compose down`.
-
-**3. Carregar os dados** (sob demanda, só na primeira vez ou para recarregar tudo)
-
-```bash
-docker compose run --rm backend python -m scripts.seed
-```
-
-Leva cerca de 1 a 2 minutos (~1,7 milhão de linhas). O seed apaga e recarrega as tabelas,
-então rode com a aplicação sem uso. As migrações também rodam antes do seed, então ele
-funciona mesmo com o volume vazio.
+**Seed.** Roda sob demanda, só na primeira vez ou para recarregar tudo. Leva cerca de 1
+a 2 minutos (~1,7 milhão de linhas). O seed apaga e recarrega as tabelas, então rode
+com a aplicação sem uso. As migrações também rodam antes do seed, então ele funciona
+mesmo com o volume vazio.
 
 **Comandos úteis**
 
@@ -295,8 +90,8 @@ Se mudar a origem do frontend, ajuste também `BACKEND_CORS_ORIGINS` no
 
 **Variáveis no Docker.** O backend não lê o `backend/.env` dentro do container: o
 `docker-compose.yml` define `DATABASE_URL` (banco em `/app/db/rocketlab.db`, no volume) e
-`BACKEND_CORS_ORIGINS`. As demais variáveis da [tabela do backend](#backend) usam os
-valores padrão. Para mudar alguma, acrescente-a em `services.backend.environment`.
+`BACKEND_CORS_ORIGINS`. As demais [variáveis do backend](#variáveis-de-ambiente) usam
+os valores padrão. Para mudar alguma, acrescente-a em `services.backend.environment`.
 
 > **Windows:** o `.gitattributes` mantém o `docker-entrypoint.sh` com fim de linha LF
 > mesmo em clones no Windows. Se o container do backend falhar com
@@ -306,169 +101,79 @@ valores padrão. Para mudar alguma, acrescente-a em `services.backend.environmen
 > As portas 8000 e 5173 são as mesmas do ambiente local: pare o `uvicorn` e o
 > `npm run dev` antes de subir os containers.
 
-## Testes
+</details>
 
-### Backend
+## Requisitos atendidos
 
-Com o ambiente virtual ativado, dentro de `backend/`:
+Cada requisito do enunciado, onde encontrá-lo na interface e na API (rotas da API sob
+`/api/v1`; detalhes em [Endpoints da API](#endpoints-da-api)).
 
-```bash
-ruff check .                                   # lint
-pytest                                         # 324 testes (API, busca, modelos, seed, cache, concorrência)
-pytest --cov=app --cov-report=term-missing     # com cobertura (~99%)
-```
-
-Os testes usam SQLite em memória e não tocam no `rocketlab.db`.
-
-### Frontend (unitários e de componentes)
-
-Dentro de `frontend/`:
-
-```bash
-npm run lint            # ESLint
-npm run build           # checagem de tipos + build
-npm test                # 333 testes (Vitest + Testing Library)
-npm run test:watch      # reexecuta ao salvar
-npm run test:coverage   # com cobertura (~99%)
-```
-
-Esses comandos (e os do backend) são os mesmos no Windows e no Linux/Mac. A CI roda
-`ruff check .` + `pytest` no backend e `npm run lint` + `npm run build` no frontend.
-
-### Testes E2E (Playwright)
-
-Os testes E2E cobrem os fluxos de ponta a ponta:
-
-- buscar filme, abrir detalhe e avaliar;
-- cadastrar, editar e remover filme;
-- página da pessoa a partir do detalhe;
-- insights (ranking leva ao detalhe do filme);
-- acessibilidade (axe) e layout em 320px, 768px e 1280px;
-- navegação só pelo teclado.
-
-Dentro de `frontend/`:
-
-```bash
-npm run test:e2e        # roda tudo, sem janela
-npm run test:e2e:ui     # modo interativo do Playwright
-```
-
-**Não é preciso subir nada antes.** O Playwright inicia sozinho:
-
-- uma API na porta **8001**, com um banco descartável (`backend/e2e.db`) criado do zero
-  pelo Alembic;
-- um frontend na porta **5174**.
-
-O banco de desenvolvimento não é tocado. O único requisito é que o venv do backend
-exista (passos 1 e 2 do backend).
-
-Por padrão, os testes usam o **Google Chrome** instalado na máquina. Para usar o
-Chromium que acompanha o Playwright (por exemplo, em CI):
-
-Windows (PowerShell):
-
-```powershell
-npx playwright install chromium
-$env:PW_CHANNEL = "chromium"; npm run test:e2e
-```
-
-Linux/Mac:
-
-```bash
-npx playwright install chromium
-PW_CHANNEL=chromium npm run test:e2e
-```
-
-O relatório HTML fica em `frontend/playwright-report/` (`npx playwright show-report`).
-
-Variáveis opcionais dos testes E2E (defina como no exemplo do `PW_CHANNEL` acima):
-
-| Variável | Padrão | Para que serve |
+| Requisito | No app | Na API |
 |---|---|---|
-| `PW_CHANNEL` | `chrome` | Navegador: `chrome` (instalado na máquina) ou `chromium` (do Playwright) |
-| `E2E_PYTHON` | Python do `backend/.venv` | Python usado para migrar e subir a API de teste (`.venv\Scripts\python.exe` no Windows, `.venv/bin/python` no Linux/Mac; sem venv, `python` do PATH) |
-| `E2E_API_PORT` | `8001` | Porta da API de teste |
-| `E2E_WEB_PORT` | `5174` | Porta do frontend de teste |
+| **Cadastrar filme** | Botão "Novo filme" no topo → `/filmes/novo`. Diretores e gêneros entram como etiquetas; os já existentes são reaproveitados pelo nome | `POST /movies` |
+| **Catálogo paginado** | Página inicial `/`, 24 filmes por página, com filtros por gênero e ano e ordenação por título, ano ou nota. O estado fica na URL: dá para compartilhar o link ou usar o Voltar do navegador | `GET /movies?page=&page_size=` → `{items, total, page, page_size}` |
+| **Detalhes com avaliações** | `/filmes/:id`: sinopse, elenco, ficha técnica (direção, gêneros, duração, roteiro, produtoras), bilheteria, notas externas (TMDB/IMDb) e a lista de avaliações, mais recentes primeiro | `GET /movies/{sk_movie_id}` e `GET /movies/{sk_movie_id}/reviews` |
+| **Busca** | Campo de busca do catálogo, por título, diretores e atores ([busca full-text](#busca-full-text-fts5)) | `GET /movies?q=` |
+| **Atualizar e remover filme** | Botões "Editar" (`/filmes/:id/editar`) e "Remover" no detalhe; a remoção pede confirmação | `PATCH /movies/{sk_movie_id}` e `DELETE /movies/{sk_movie_id}` |
+| **Nova avaliação** | Formulário "Avaliar este filme" no detalhe: nome, nota de 0 a 10 e comentário | `POST /movies/{sk_movie_id}/reviews` (remoção: `DELETE /reviews/{id}`) |
+| **Média das avaliações** | Nota média ("7,5/10") e quantidade no detalhe e nos cards do catálogo, atualizadas na hora | `nota_media` e `qtd_avaliacoes` na lista e no detalhe, [recalculadas na mesma transação](#dim_reviews-recalculada-em-vez-de-carregada-do-csv) |
 
-## Endpoints principais
+## Funcionalidades extras
 
-Todas as rotas ficam sob `/api/v1`. A documentação completa, com os schemas, está em
-`/docs`.
+Além do que o enunciado pede:
 
-| Método | Rota | Descrição | Respostas |
-|---|---|---|---|
-| GET | `/movies` | Lista paginada. Parâmetros: `q` (título, diretores ou atores; ver [Busca full-text](#busca-full-text-fts5)), `genero`, `ano`, `ordem` (`titulo` \| `ano` \| `nota`), `page`, `page_size` (padrão 20, máx. 100) | 200, 422 |
-| GET | `/movies/{sk_movie_id}` | Detalhe: dados, diretores, gêneros, elenco, bilheteria, média. `creditos` repete diretores, atores e roteiristas com o `sk_person_id` | 200, 404 |
-| POST | `/movies` | Cadastra filme (`titulo` obrigatório; `diretores` e `generos` como listas) | 201, 409, 422 |
-| PATCH | `/movies/{sk_movie_id}` | Atualiza só os campos enviados | 200, 404, 409, 422 |
-| DELETE | `/movies/{sk_movie_id}` | Remove o filme com avaliações, métricas e vínculos | 204, 404 |
-| GET | `/movies/{sk_movie_id}/reviews` | Avaliações paginadas, mais recentes primeiro | 200, 404 |
-| POST | `/movies/{sk_movie_id}/reviews` | Cria avaliação (`nome`, `nota`, `comentario`) e recalcula a média | 201, 404, 422 |
-| DELETE | `/reviews/{sk_movie_review_id}` | Remove avaliação e recalcula a média | 204, 404 |
-| GET | `/people/{sk_person_id}` | Pessoa (`nome`, `tipo`) e `filmes` paginados (`page`, `page_size`), do mais recente ao mais antigo, sem ano por último | 200, 404, 422 |
-| GET | `/genres` | Gêneros que têm filmes (para o filtro do catálogo) | 200 |
-| GET | `/stats` | Números gerais, rankings e médias por gênero e ano (página de insights) | 200 |
-| GET | `/health` | Saúde da aplicação (fora de `/api/v1`) | 200 |
+- **Busca full-text (FTS5)** por título, diretores e atores, sem diferenciar acentos nem
+  maiúsculas, pelo início das palavras ("pod chef" → "O Poderoso Chefão").
+  [Detalhes](#busca-full-text-fts5).
+- **Painel de insights** (link "Insights" no topo, `/insights`; `GET /stats`): números
+  gerais, top 10 por média e por lucro, média por gênero, filmes por ano e usuários ×
+  IMDb × TMDB, em gráficos com tabela de dados alternativa.
+  [Detalhes](#insights-agregações-no-sql-e-regras-sobre-os-dados).
+- **Filmografia de pessoas** (`/pessoas/:id`; `GET /people/{id}`): clique em um diretor,
+  ator ou roteirista no detalhe para ver os filmes dele, do mais recente ao mais antigo,
+  com pôster e média. Quem dirige e atua tem duas páginas (`dim_people` é única por
+  nome + papel).
+- **Cache em memória com invalidação** de `GET /movies`, `/stats` e `/genres` por 60 s,
+  limpo a cada escrita (`CACHE_ENABLED`, `CACHE_TTL_SECONDS`).
+  [Detalhes](#cache-em-memória).
+- **Script de benchmark** que mede um endpoint com e sem cache, direto no app, sem
+  servidor ([scripts do backend](#scripts-do-backend)).
+- **Docker Compose**: backend (com migrações automáticas) e frontend (nginx) sem
+  instalar Python nem Node ([início rápido](#início-rápido-com-docker)).
+- **CI no GitHub Actions** a cada push ou PR na `main`: `ruff` + `pytest` no backend,
+  `lint` + `build` no frontend; o selo no topo mostra o estado da `main`.
+- **Storybook** de `Rating`, `MovieCard`, `Pagination` e `MovieForm` com dados mockados,
+  sem precisar da API ([Storybook](#storybook)).
+- **Testes E2E e de acessibilidade**: Playwright nos fluxos principais + axe (WCAG 2.2 AA)
+  em 320px, 768px e 1280px e navegação só pelo teclado
+  ([Testes E2E](#testes-e2e-playwright)).
+- **Capturas de tela e GIF gerados por script**: `npm run screenshots` refaz as imagens
+  de [Telas](#telas) e o GIF de demonstração com o Playwright
+  ([scripts do frontend](#scripts-do-frontend)).
+- **Acessível e responsivo**: WCAG 2.2 AA, uso completo pelo teclado, título de aba por
+  página, contraste verificado.
 
-Listagens paginadas devolvem sempre `{ "items": [...], "total", "page", "page_size" }`.
-Erros de validação (422) seguem o formato padrão do FastAPI, que o frontend usa para
-mostrar a mensagem ao lado do campo certo.
+## Telas
 
-Exemplo de cadastro:
+Geradas por `npm run screenshots` (em `frontend/`) e salvas em `docs/images/`.
 
-```json
-POST /api/v1/movies
-{
-  "titulo": "Interestelar",
-  "ano_lancamento": 2014,
-  "duracao_minutos": 169,
-  "diretores": ["Christopher Nolan"],
-  "generos": ["Ficção científica", "Drama"]
-}
-```
-
-## Estrutura de pastas
-
-```text
-.
-├── backend/
-│   ├── app/
-│   │   ├── api/            # dependências comuns (sessão, paginação) e router v1
-│   │   ├── core/           # configurações (.env), logging e cache em memória
-│   │   ├── db/             # Base ORM, engine e sessões
-│   │   ├── movies/         # domínio de filmes: models, schemas, repository, service, router
-│   │   ├── reviews/        # domínio de avaliações (mesma divisão em camadas)
-│   │   ├── genres/         # listagem de gêneros
-│   │   ├── people/         # página da pessoa (GET /people/{id}) com a filmografia
-│   │   ├── stats/          # agregações da página de insights (GET /stats)
-│   │   └── main.py         # criação da aplicação FastAPI
-│   ├── migrations/         # ambiente e revisões do Alembic
-│   ├── scripts/            # seed.py (carga dos CSVs) e benchmark.py (tempos com/sem cache)
-│   ├── data/               # CSVs (não versionados)
-│   ├── tests/              # pytest
-│   ├── Dockerfile          # imagem da API (migra ao subir; ver docker-entrypoint.sh)
-│   └── docker-entrypoint.sh
-├── frontend/
-│   ├── src/
-│   │   ├── api/            # cliente HTTP tipado, tipos da API, chaves do React Query
-│   │   ├── components/     # componentes reutilizáveis (cards, nota, modal, etiquetas…)
-│   │   ├── hooks/          # hooks genéricos (debounce, título da aba)
-│   │   ├── pages/          # uma página por rota + subpastas por tela
-│   │   ├── stories/        # dados mockados e decorators das stories do Storybook
-│   │   ├── styles/         # tema (variáveis CSS globais)
-│   │   └── test/           # utilitários dos testes (mock da API, render com providers)
-│   ├── .storybook/         # configuração do Storybook (react-vite) e CSS global
-│   ├── e2e/                # testes Playwright: specs, page objects e subida da API de teste
-│   ├── playwright.config.ts
-│   ├── Dockerfile          # build com Node e site estático no nginx
-│   └── nginx.conf          # fallback de SPA para as rotas do React Router
-├── docker-compose.yml      # backend + frontend (ver "Rodando com Docker")
-└── README.md
-```
-
-Backend e frontend são organizados **por domínio**. No backend, cada domínio separa as
-camadas de rota, regra de negócio e acesso a dados (`router` → `service` →
-`repository`).
+<table>
+  <tr>
+    <td width="50%"><b>Catálogo</b> (filtrado por gênero)<br><img src="docs/images/catalogo.png" alt="Catálogo filtrado pelo gênero Comedy, com pôsteres e notas médias"></td>
+    <td width="50%"><b>Busca</b> por diretor<br><img src="docs/images/busca.png" alt="Busca por Meirelles encontrando dois filmes"></td>
+  </tr>
+  <tr>
+    <td><b>Detalhe do filme</b> com média das avaliações<br><img src="docs/images/detalhe-filme.png" alt="Detalhe de Cidade de Deus com nota média 9,0 de 10"></td>
+    <td><b>Nova avaliação</b><br><img src="docs/images/nova-avaliacao.png" alt="Formulário de avaliação preenchido, com nota 9 e comentário"></td>
+  </tr>
+  <tr>
+    <td><b>Cadastro de filme</b><br><img src="docs/images/cadastro-filme.png" alt="Formulário de cadastro de filme preenchido"></td>
+    <td><b>Catálogo no celular</b> (390×844)<br><img src="docs/images/catalogo-mobile.png" alt="Catálogo em tela de celular" width="60%"></td>
+  </tr>
+  <tr>
+    <td colspan="2"><b>Insights</b><br><img src="docs/images/insights.png" alt="Painel de insights com rankings e gráficos"></td>
+  </tr>
+</table>
 
 ## Decisões técnicas
 
@@ -671,3 +376,434 @@ catálogo e pela página de insights.
   em vez de erro 500.
 - **Sem biblioteca de UI**: tema escuro em variáveis CSS e CSS Modules. As cores foram
   checadas quanto a contraste (texto ≥ 4,5:1, contornos de campos ≥ 3:1).
+- **Schema só pelo Alembic**, nunca por `create_all`.
+- **Organização por domínio** no backend e no frontend (ver [Arquitetura](#arquitetura)).
+
+## Stack
+
+**Backend:** Python 3.11+, FastAPI, SQLAlchemy 2.0 (async), Alembic, Pydantic 2, SQLite (aiosqlite) · **Frontend:** React 19, TypeScript, Vite, React Router, TanStack Query, Recharts, CSS Modules.<br>
+**Testes:** pytest + httpx; Vitest + Testing Library; Playwright + axe-core (E2E e acessibilidade) · **Qualidade:** Ruff (backend), ESLint + `tsc` (frontend).
+
+## Execução manual
+
+Os comandos abaixo partem da raiz do repositório. Onde o comando muda entre sistemas,
+há uma versão para **Windows (PowerShell)** e outra para **Linux/Mac**.
+
+### Pré-requisitos
+
+- **Python 3.11 ou superior**
+- **Node.js 22.12 ou superior** (exigência do Vitest 5)
+- **Os CSVs de dados** da camada Diamond (não versionados; veja o passo 4 abaixo)
+- Para os testes E2E: **Google Chrome** instalado ou o Chromium do Playwright (veja
+  [Testes E2E](#testes-e2e-playwright))
+
+Para rodar só com Docker, basta o **Docker com Compose v2** e os CSVs (veja o
+[Início rápido](#início-rápido-com-docker)).
+
+### Backend
+
+**1. Criar e ativar o ambiente virtual**
+
+Windows (PowerShell):
+
+```powershell
+cd backend
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+```
+
+> Se o PowerShell bloquear o script de ativação, libere para o usuário atual uma única
+> vez: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
+
+Linux/Mac:
+
+```bash
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+Com o ambiente ativado, os comandos dos próximos passos são iguais nos dois sistemas.
+
+**2. Instalar as dependências** (inclui as de teste e lint)
+
+```bash
+python -m pip install -e ".[dev]"
+```
+
+**3. Criar o `.env`**
+
+Windows: `Copy-Item .env.example .env` · Linux/Mac: `cp .env.example .env`
+
+Os valores padrão já funcionam. As variáveis disponíveis estão em
+[Variáveis de ambiente](#variáveis-de-ambiente).
+
+**4. Colocar os CSVs em `backend/data/`**
+
+O seed espera estes arquivos, com estes nomes, direto em `backend/data/`:
+
+```text
+backend/data/
+├── dim_genres.csv
+├── dim_companies.csv
+├── dim_people.csv
+├── dim_movies.csv
+├── bridge_movie_genre.csv
+├── bridge_movie_company.csv
+├── bridge_movie_person.csv
+├── fact_movies_performance.csv
+├── movies_reviews.csv
+└── dim_reviews.csv        # opcional: é ignorado (veja "Decisões técnicas")
+```
+
+Os CSVs estão no `.gitignore` e não vão para o repositório.
+
+**5. Criar as tabelas**
+
+```bash
+alembic upgrade head
+```
+
+O schema é criado só pelo Alembic, nunca por `create_all`.
+
+**6. Carregar os dados (seed)**
+
+```bash
+python -m scripts.seed
+```
+
+- **Duração:** carrega ~1,7 milhão de linhas em cerca de **3 minutos** e mostra o progresso
+  de cada tabela.
+- **Pode rodar de novo:** o seed limpa e recarrega tudo numa única transação. Se algo
+  falhar, o banco fica como estava.
+- **Cuidado:** avaliações e filmes criados pela aplicação são apagados ao rodar de novo.
+
+**7. Subir a API**
+
+```bash
+uvicorn app.main:app --reload
+```
+
+- API: <http://localhost:8000>
+- Documentação interativa (Swagger): <http://localhost:8000/docs>
+- Checagem de saúde: <http://localhost:8000/health>
+
+### Frontend
+
+Em outro terminal, a partir da raiz do repositório:
+
+**1. Instalar as dependências**
+
+```bash
+cd frontend
+npm install
+```
+
+**2. Criar o `.env`** (opcional)
+
+Windows: `Copy-Item .env.example .env` · Linux/Mac: `cp .env.example .env`
+
+A única variável é `VITE_API_URL`, a URL base da API **incluindo** `/api/v1`. Sem o
+arquivo, o padrão é `http://localhost:8000/api/v1`.
+
+**3. Subir o servidor de desenvolvimento**
+
+```bash
+npm run dev
+```
+
+Acesse <http://localhost:5173>. Essa origem já está liberada no CORS do backend.
+
+Para gerar a versão de produção: `npm run build` (sai em `frontend/dist/`).
+
+## Testes
+
+### Backend
+
+Com o ambiente virtual ativado, dentro de `backend/`:
+
+```bash
+ruff check .                                   # lint
+pytest                                         # 324 testes (API, busca, modelos, seed, cache, concorrência)
+pytest --cov=app --cov-report=term-missing     # com cobertura (~99%)
+```
+
+Os testes usam SQLite em memória e não tocam no `rocketlab.db`.
+
+### Frontend (unitários e de componentes)
+
+Dentro de `frontend/`:
+
+```bash
+npm run lint            # ESLint
+npm run build           # checagem de tipos + build
+npm test                # 333 testes (Vitest + Testing Library)
+npm run test:watch      # reexecuta ao salvar
+npm run test:coverage   # com cobertura (~99%)
+```
+
+Esses comandos (e os do backend) são os mesmos no Windows e no Linux/Mac. A CI roda
+`ruff check .` + `pytest` no backend e `npm run lint` + `npm run build` no frontend.
+
+### Testes E2E (Playwright)
+
+Os testes E2E cobrem os fluxos de ponta a ponta:
+
+- buscar filme, abrir detalhe e avaliar;
+- cadastrar, editar e remover filme;
+- página da pessoa a partir do detalhe;
+- insights (ranking leva ao detalhe do filme);
+- acessibilidade (axe) e layout em 320px, 768px e 1280px;
+- navegação só pelo teclado.
+
+Dentro de `frontend/`:
+
+```bash
+npm run test:e2e        # roda tudo, sem janela
+npm run test:e2e:ui     # modo interativo do Playwright
+```
+
+**Não é preciso subir nada antes.** O Playwright inicia sozinho:
+
+- uma API na porta **8001**, com um banco descartável (`backend/e2e.db`) criado do zero
+  pelo Alembic;
+- um frontend na porta **5174**.
+
+O banco de desenvolvimento não é tocado. O único requisito é que o venv do backend
+exista (passos 1 e 2 do backend).
+
+Por padrão, os testes usam o **Google Chrome** instalado na máquina. Para usar o
+Chromium que acompanha o Playwright (por exemplo, em CI):
+
+Windows (PowerShell):
+
+```powershell
+npx playwright install chromium
+$env:PW_CHANNEL = "chromium"; npm run test:e2e
+```
+
+Linux/Mac:
+
+```bash
+npx playwright install chromium
+PW_CHANNEL=chromium npm run test:e2e
+```
+
+O relatório HTML fica em `frontend/playwright-report/` (`npx playwright show-report`).
+As variáveis opcionais dos testes E2E (`PW_CHANNEL`, `E2E_PYTHON`, `E2E_API_PORT`,
+`E2E_WEB_PORT`) estão em [Variáveis de ambiente](#variáveis-de-ambiente).
+
+## Referência
+
+<details>
+<summary><b>Arquitetura</b> (estrutura de pastas)</summary>
+
+### Arquitetura
+
+```text
+.
+├── .github/workflows/      # CI: ruff + pytest e lint + build a cada push/PR na main
+├── backend/
+│   ├── app/
+│   │   ├── api/            # dependências comuns (sessão, paginação) e router v1
+│   │   ├── core/           # configurações (.env), logging e cache em memória
+│   │   ├── db/             # Base ORM, engine e sessões
+│   │   ├── movies/         # domínio de filmes: models, schemas, repository, service, router
+│   │   ├── reviews/        # domínio de avaliações (mesma divisão em camadas)
+│   │   ├── genres/         # listagem de gêneros
+│   │   ├── people/         # página da pessoa (GET /people/{id}) com a filmografia
+│   │   ├── stats/          # agregações da página de insights (GET /stats)
+│   │   └── main.py         # criação da aplicação FastAPI
+│   ├── migrations/         # ambiente e revisões do Alembic
+│   ├── scripts/            # seed.py (carga dos CSVs) e benchmark.py (tempos com/sem cache)
+│   ├── data/               # CSVs (não versionados)
+│   ├── tests/              # pytest
+│   ├── Dockerfile          # imagem da API (migra ao subir; ver docker-entrypoint.sh)
+│   └── docker-entrypoint.sh
+├── frontend/
+│   ├── src/
+│   │   ├── api/            # cliente HTTP tipado, tipos da API, chaves do React Query
+│   │   ├── components/     # componentes reutilizáveis (cards, nota, modal, etiquetas…)
+│   │   ├── hooks/          # hooks genéricos (debounce, título da aba)
+│   │   ├── pages/          # uma página por rota + subpastas por tela
+│   │   ├── stories/        # dados mockados e decorators das stories do Storybook
+│   │   ├── styles/         # tema (variáveis CSS globais)
+│   │   └── test/           # utilitários dos testes (mock da API, render com providers)
+│   ├── .storybook/         # configuração do Storybook (react-vite) e CSS global
+│   ├── e2e/                # testes Playwright: specs, page objects, capturas e subida da API de teste
+│   ├── playwright.config.ts
+│   ├── Dockerfile          # build com Node e site estático no nginx
+│   └── nginx.conf          # fallback de SPA para as rotas do React Router
+├── docs/images/            # capturas de tela e demo.gif do README (npm run screenshots)
+├── docker-compose.yml      # backend + frontend (ver "Início rápido com Docker")
+└── README.md
+```
+
+Backend e frontend são organizados **por domínio**. No backend, cada domínio separa as
+camadas de rota, regra de negócio e acesso a dados (`router` → `service` →
+`repository`).
+
+</details>
+
+<details>
+<summary><b>Endpoints da API</b></summary>
+
+### Endpoints da API
+
+Todas as rotas ficam sob `/api/v1`. A documentação completa, com os schemas, está em
+`/docs`.
+
+| Método | Rota | Descrição | Respostas |
+|---|---|---|---|
+| GET | `/movies` | Lista paginada. Parâmetros: `q` (título, diretores ou atores; ver [Busca full-text](#busca-full-text-fts5)), `genero`, `ano`, `ordem` (`titulo` \| `ano` \| `nota`), `page`, `page_size` (padrão 20, máx. 100) | 200, 422 |
+| GET | `/movies/{sk_movie_id}` | Detalhe: dados, diretores, gêneros, elenco, bilheteria, média. `creditos` repete diretores, atores e roteiristas com o `sk_person_id` | 200, 404 |
+| POST | `/movies` | Cadastra filme (`titulo` obrigatório; `diretores` e `generos` como listas) | 201, 409, 422 |
+| PATCH | `/movies/{sk_movie_id}` | Atualiza só os campos enviados | 200, 404, 409, 422 |
+| DELETE | `/movies/{sk_movie_id}` | Remove o filme com avaliações, métricas e vínculos | 204, 404 |
+| GET | `/movies/{sk_movie_id}/reviews` | Avaliações paginadas, mais recentes primeiro | 200, 404 |
+| POST | `/movies/{sk_movie_id}/reviews` | Cria avaliação (`nome`, `nota`, `comentario`) e recalcula a média | 201, 404, 422 |
+| DELETE | `/reviews/{sk_movie_review_id}` | Remove avaliação e recalcula a média | 204, 404 |
+| GET | `/people/{sk_person_id}` | Pessoa (`nome`, `tipo`) e `filmes` paginados (`page`, `page_size`), do mais recente ao mais antigo, sem ano por último | 200, 404, 422 |
+| GET | `/genres` | Gêneros que têm filmes (para o filtro do catálogo) | 200 |
+| GET | `/stats` | Números gerais, rankings e médias por gênero e ano (página de insights) | 200 |
+| GET | `/health` | Saúde da aplicação (fora de `/api/v1`) | 200 |
+
+Listagens paginadas devolvem sempre `{ "items": [...], "total", "page", "page_size" }`.
+Erros de validação (422) seguem o formato padrão do FastAPI, que o frontend usa para
+mostrar a mensagem ao lado do campo certo.
+
+Exemplo de cadastro:
+
+```json
+POST /api/v1/movies
+{
+  "titulo": "Interestelar",
+  "ano_lancamento": 2014,
+  "duracao_minutos": 169,
+  "diretores": ["Christopher Nolan"],
+  "generos": ["Ficção científica", "Drama"]
+}
+```
+
+</details>
+
+<details>
+<summary><b>Variáveis de ambiente</b> (backend, frontend e testes E2E)</summary>
+
+### Variáveis de ambiente
+
+**Backend** (`backend/.env`, criado a partir do `.env.example`; os padrões já funcionam):
+
+| Variável | Padrão | Para que serve |
+|---|---|---|
+| `DATABASE_URL` | `sqlite+aiosqlite:///./rocketlab.db` | Banco de dados (arquivo `backend/rocketlab.db`) |
+| `BACKEND_CORS_ORIGINS` | `["http://localhost:5173"]` | Origens liberadas no CORS (a do frontend) |
+| `ENVIRONMENT` | `local` | Em `local`, o SQLAlchemy registra cada SQL no console |
+| `PROJECT_VERSION` | `2026.2` | Versão exibida no Swagger (`/docs`) |
+| `LOG_LEVEL` | `INFO` | Nível de log |
+| `CACHE_ENABLED` | `true` | Liga o cache em memória de `GET /movies`, `/stats` e `/genres` |
+| `CACHE_TTL_SECONDS` | `60` | Validade de cada entrada do cache (maior que 0; para desligar, use `CACHE_ENABLED`) |
+
+No Docker, o backend não lê esse arquivo (veja "Variáveis no Docker" no
+[Início rápido](#início-rápido-com-docker)).
+
+**Frontend** (`frontend/.env`, opcional):
+
+| Variável | Padrão | Para que serve |
+|---|---|---|
+| `VITE_API_URL` | `http://localhost:8000/api/v1` | URL base da API, **incluindo** `/api/v1`. No Docker é um *build arg* |
+
+**Testes E2E** (opcionais; defina como no exemplo do `PW_CHANNEL` em
+[Testes E2E](#testes-e2e-playwright)):
+
+| Variável | Padrão | Para que serve |
+|---|---|---|
+| `PW_CHANNEL` | `chrome` | Navegador: `chrome` (instalado na máquina) ou `chromium` (do Playwright) |
+| `E2E_PYTHON` | Python do `backend/.venv` | Python usado para migrar e subir a API de teste (`.venv\Scripts\python.exe` no Windows, `.venv/bin/python` no Linux/Mac; sem venv, `python` do PATH) |
+| `E2E_API_PORT` | `8001` | Porta da API de teste |
+| `E2E_WEB_PORT` | `5174` | Porta do frontend de teste |
+
+</details>
+
+<details>
+<summary><b>Scripts</b> (backend, frontend e Storybook)</summary>
+
+### Scripts
+
+#### Scripts do backend
+
+Todos rodam de dentro de `backend/`, com o ambiente virtual ativado (os comandos são
+iguais no Windows e no Linux/Mac).
+
+| Comando | Para que serve |
+|---|---|
+| `alembic upgrade head` | Cria ou atualiza as tabelas (passo 5) |
+| `python -m scripts.seed` | Carrega os CSVs de `backend/data/` (passo 6). Apaga e recarrega tudo |
+| `python -m scripts.benchmark` | Mede `GET /api/v1/movies` com e sem cache (20 chamadas de cada) |
+| `python -m scripts.benchmark --path "/api/v1/stats" --calls 50` | Mede outro endpoint, com outra quantidade de chamadas |
+
+O benchmark usa o banco configurado no `.env`, então rode o seed antes para ter números
+realistas. Os resultados medidos estão em [Cache em memória](#cache-em-memória).
+
+Não há script para criar administrador: o sistema não tem login.
+
+#### Scripts do frontend
+
+Dentro de `frontend/`:
+
+| Comando | Para que serve |
+|---|---|
+| `npm run dev` | Servidor de desenvolvimento em <http://localhost:5173> |
+| `npm run build` | Checagem de tipos + build de produção em `frontend/dist/` |
+| `npm run preview` | Serve o build de produção localmente |
+| `npm run lint` | ESLint |
+| `npm test` / `npm run test:watch` / `npm run test:coverage` | Testes Vitest (uma vez, ao salvar, com cobertura) |
+| `npm run test:e2e` / `npm run test:e2e:ui` | Testes Playwright (sem janela / modo interativo) |
+| `npm run screenshots` | Refaz as capturas e o `demo.gif` de `docs/images/` (ver abaixo) |
+| `npm run storybook` / `npm run build-storybook` | Storybook (ver abaixo) |
+
+**Capturas de tela.** `npm run screenshots` roda `e2e/screenshots.spec.ts` no Playwright,
+com a mesma API e o mesmo banco descartável dos testes E2E. O spec cadastra filmes de
+exemplo e salva em `docs/images/` o catálogo (1280×800 e 390×844), a busca, o detalhe,
+o formulário de avaliação, o cadastro e os insights (página inteira). Os pôsteres vêm
+do TMDB, então é preciso estar com internet. Esse spec fica fora de `npm run test:e2e`.
+
+O mesmo comando grava o `demo.gif` (1024×640): busca, detalhe e envio de uma avaliação.
+O `e2e/support/gifRecorder.ts` tira screenshots em intervalo fixo durante o fluxo e
+monta o GIF em JavaScript (`gifenc` + `pngjs`, sem ffmpeg), com uma paleta única e só
+os pixels que mudam entre um frame e outro, o que deixa o arquivo em ~300 KB.
+
+#### Storybook
+
+Catálogo visual dos componentes, isolados do resto do app. As stories usam dados
+mockados e **não chamam a API**: não é preciso subir o backend.
+
+```bash
+cd frontend
+npm run storybook        # http://localhost:6006, recarrega ao editar
+npm run build-storybook  # versão estática em frontend/storybook-static/
+```
+
+| Story | Estados |
+|---|---|
+| Components/Rating/Exibição | notas 0, 5,5 e 10; média do filme ("10,0/10"); tamanhos `sm`, `md`, `lg` |
+| Components/Rating/Entrada | sem nota, nota escolhida, com erro, desabilitado |
+| Components/MovieCard | com e sem pôster, sem avaliações, título longo |
+| Components/Pagination | primeira, do meio e última página |
+| Pages/MovieForm | vazio, preenchido e com erros de validação |
+
+- A nota é texto de 0 a 10, sem estrelas (ver
+  [Nota de 0 a 10 em todo o sistema](#nota-de-0-a-10-em-todo-o-sistema)): as stories
+  de nota cobrem a exibição (`Rating`) e a entrada (`NotaInput`).
+- O CSS global do app (`src/styles/theme.css`) é aplicado em todas as stories, e um
+  `MemoryRouter` envolve cada uma (os cards e o formulário têm links).
+- `MovieForm` recebe um `QueryClient` próprio com os gêneros já no cache, sem nenhuma
+  busca. Em "com erros de validação", uma função `play` envia o formulário e confere as
+  mensagens da validação real.
+- O pôster mock é um SVG local (`src/stories/fixtures/`), então as stories funcionam
+  sem internet.
+
+Para uma story nova, crie `Componente.stories.tsx` ao lado do componente; os dados
+mockados compartilhados ficam em `src/stories/fixtures/`.
+
+</details>
